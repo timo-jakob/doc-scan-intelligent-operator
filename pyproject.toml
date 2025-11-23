@@ -5,7 +5,7 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "doc-scan-intelligent-operator"
 version = "0.1.0"
-description = "Analyses documents and organises them intelligently using MLX and Hugging Face models"
+description = "Analyzes documents and organizes them intelligently using MLX and Hugging Face models"
 readme = "README.md"
 requires-python = ">=3.9"
 license = {text = "MIT"}
