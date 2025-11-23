@@ -250,7 +250,8 @@ class ModelManager:
                     try:
                         cache_size += item.stat().st_size
                         model_count += 1
-                    except:
+                    except (OSError, PermissionError):
+                        # Skip files we can't access
                         pass
 
         available_space = get_available_disk_space(self.cache_dir)
