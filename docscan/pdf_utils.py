@@ -58,7 +58,7 @@ def pdf_to_images(pdf_path: Path, dpi: int = 150) -> List[Image.Image]:
     except ImportError as e:
         raise ImportError(
             "PyMuPDF (fitz) is required for PDF processing. "
-            "Install with: pip install pymupdf"
+            "Install with: pip install PyMuPDF"
         ) from e
     except Exception as e:
         raise ValueError(f"Failed to convert PDF to images: {e}") from e
