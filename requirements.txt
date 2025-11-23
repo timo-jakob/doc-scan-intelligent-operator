@@ -1,0 +1,17 @@
+# Core dependencies for doc-scan-intelligent-operator
+# Fixed versions for stability - managed by Renovate
+
+# MLX for Apple Silicon acceleration
+mlx==0.21.0
+mlx-lm==0.20.3
+mlx-vlm==0.1.1
+
+# Hugging Face hub
+huggingface-hub==0.26.5
+
+# Configuration
+PyYAML==6.0.2
+
+# PDF processing
+PyMuPDF==1.24.14  # Also known as fitz, for PDF to image conversion
+Pillow==11.0.0  # Image processing

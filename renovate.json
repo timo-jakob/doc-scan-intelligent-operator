@@ -1,0 +1,76 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "extends": [
+    "config:recommended"
+  ],
+  "description": "Renovate configuration for doc-scan-intelligent-operator",
+  "timezone": "Europe/Berlin",
+  "schedule": [
+    "before 10am on monday"
+  ],
+  "labels": [
+    "dependencies"
+  ],
+  "commitMessagePrefix": "chore(deps):",
+  "commitMessageAction": "update",
+  "assignees": [],
+  "reviewers": [],
+  "prConcurrentLimit": 5,
+  "prHourlyLimit": 0,
+  "separateMinorPatch": true,
+  "separateMajorMinor": true,
+  "packageRules": [
+    {
+      "description": "Group all production dependency updates together",
+      "matchManagers": ["pip_requirements"],
+      "matchFiles": ["requirements.txt"],
+      "groupName": "production dependencies",
+      "automerge": false,
+      "labels": ["dependencies", "production"]
+    },
+    {
+      "description": "Group all development dependency updates together",
+      "matchManagers": ["pip_requirements"],
+      "matchFiles": ["requirements-dev.txt"],
+      "groupName": "development dependencies",
+      "automerge": false,
+      "labels": ["dependencies", "development"]
+    },
+    {
+      "description": "MLX packages - critical for Apple Silicon",
+      "matchPackagePatterns": ["^mlx"],
+      "groupName": "MLX packages",
+      "automerge": false,
+      "labels": ["dependencies", "mlx", "critical"],
+      "reviewers": [],
+      "additionalBranchPrefix": "mlx-"
+    },
+    {
+      "description": "Security updates - higher priority",
+      "matchUpdateTypes": ["patch"],
+      "matchCurrentVersion": "!/^0/",
+      "automerge": false,
+      "labels": ["dependencies", "security"],
+      "prPriority": 10
+    },
+    {
+      "description": "Major updates require careful review",
+      "matchUpdateTypes": ["major"],
+      "automerge": false,
+      "labels": ["dependencies", "major-update"],
+      "prPriority": -5,
+      "minimumReleaseAge": "7 days"
+    }
+  ],
+  "pip_requirements": {
+    "fileMatch": ["(^|/)requirements[\\w-]*\\.txt$"]
+  },
+  "vulnerabilityAlerts": {
+    "enabled": true,
+    "labels": ["security", "vulnerability"],
+    "prPriority": 20
+  },
+  "lockFileMaintenance": {
+    "enabled": false
+  }
+}

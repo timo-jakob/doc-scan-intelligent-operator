@@ -1,0 +1,6 @@
+# Note: This repository uses Renovate for dependency management
+# Dependabot is disabled in favor of Renovate for more flexible configuration
+# See renovate.json and .github/renovate.json5 for configuration
+
+version: 2
+updates: []
