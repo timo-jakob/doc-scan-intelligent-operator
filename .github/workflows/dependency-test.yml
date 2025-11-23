@@ -14,7 +14,7 @@ on:
 
 jobs:
   test-dependencies:
-    runs-on: macos-26  # Apple Silicon compatibility testing
+    runs-on: macos-14  # Apple Silicon M1 for MLX compatibility
     strategy:
       matrix:
         python-version: ['3.9', '3.10', '3.11', '3.12', '3.13']
