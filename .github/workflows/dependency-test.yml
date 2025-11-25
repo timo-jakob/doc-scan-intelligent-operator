@@ -33,14 +33,14 @@ jobs:
 
       - name: Install build dependencies
         run: |
-          brew install gcc
+          # Install build tools for SciPy and other scientific packages
+          brew install gcc openblas
           # Find and link gfortran
           GFORTRAN_PATH=$(brew --prefix gcc)/bin
           echo "$GFORTRAN_PATH" >> $GITHUB_PATH
           export PATH="$GFORTRAN_PATH:$PATH"
-          # Verify gfortran is available
-          ls -la "$GFORTRAN_PATH"/gfortran* || echo "No gfortran found"
-          which gfortran || which gfortran-14 || which gfortran-15 || echo "gfortran not found"
+          #Configure OpenBLAS paths for pkg-config
+          echo "PKG_CONFIG_PATH=$(brew --prefix openblas)/lib/pkgconfig:$PKG_CONFIG_PATH" >> $GITHUB_ENV
 
       - name: Cache pip packages
         uses: actions/cache@v4
