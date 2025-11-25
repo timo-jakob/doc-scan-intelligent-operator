@@ -33,7 +33,11 @@ jobs:
 
       - name: Install build dependencies
         run: |
-          brew install gfortran
+          brew install gcc
+          # Ensure gfortran is available in PATH for subsequent steps
+          echo "/opt/homebrew/bin" >> $GITHUB_PATH
+          which gfortran || echo "gfortran not found in PATH"
+          gfortran --version || echo "gfortran version check failed"
 
       - name: Cache pip packages
         uses: actions/cache@v4
