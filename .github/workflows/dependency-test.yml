@@ -34,13 +34,16 @@ jobs:
       - name: Install build dependencies
         run: |
           # Install build tools for SciPy and other scientific packages
-          brew install gcc openblas
+          brew install gcc openblas libomp
           # Find and link gfortran
           GFORTRAN_PATH=$(brew --prefix gcc)/bin
           echo "$GFORTRAN_PATH" >> $GITHUB_PATH
           export PATH="$GFORTRAN_PATH:$PATH"
-          #Configure OpenBLAS paths for pkg-config
+          # Configure OpenBLAS paths for pkg-config
           echo "PKG_CONFIG_PATH=$(brew --prefix openblas)/lib/pkgconfig:$PKG_CONFIG_PATH" >> $GITHUB_ENV
+          # Configure OpenMP paths for clang
+          echo "LDFLAGS=-L$(brew --prefix libomp)/lib" >> $GITHUB_ENV
+          echo "CPPFLAGS=-I$(brew --prefix libomp)/include" >> $GITHUB_ENV
 
       - name: Cache pip packages
         uses: actions/cache@v4
@@ -53,8 +56,9 @@ jobs:
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install -r requirements.txt
-          pip install -r requirements-dev.txt
+          # Prefer binary wheels, only build from source if absolutely necessary
+          pip install --prefer-binary -r requirements.txt
+          pip install --prefer-binary -r requirements-dev.txt
 
       - name: Verify MLX installation (Apple Silicon)
         run: |
