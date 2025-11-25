@@ -14,4 +14,4 @@ PyYAML==6.0.2
 
 # PDF processing
 PyMuPDF==1.24.14  # Also known as fitz, for PDF to image conversion
-Pillow==11.0.0  # Image processing
+Pillow==10.4.0  # Image processing (constrained by gradio dependency of mlx-vlm)
