@@ -1,0 +1,25 @@
+# Code Owners for doc-scan-intelligent-operator
+# These owners will be automatically requested for review when PRs modify matching files
+
+# Global owners - all files
+* @timo
+
+# Python dependencies - require careful review
+requirements.txt @timo
+requirements-dev.txt @timo
+setup.py @timo
+pyproject.toml @timo
+
+# CI/CD and configuration
+.github/ @timo
+renovate.json @timo
+.github/renovate.json5 @timo
+
+# Documentation
+*.md @timo
+CLAUDE.md @timo
+
+# Core ML components - critical for functionality
+docscan/model_manager.py @timo
+docscan/invoice_detector.py @timo
+docscan/mlx_utils.py @timo

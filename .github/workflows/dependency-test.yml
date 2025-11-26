@@ -1,0 +1,122 @@
+name: Dependency Test
+
+# This workflow runs on Renovate PRs to verify dependency updates
+on:
+  pull_request:
+    paths:
+      - 'requirements*.txt'
+      - 'setup.py'
+      - 'pyproject.toml'
+  push:
+    branches:
+      - main
+      - 'renovate/**'
+
+jobs:
+  test-dependencies:
+    runs-on: macos-14  # Apple Silicon M1 for MLX compatibility
+    strategy:
+      matrix:
+        python-version: ['3.12']  # Primary supported version for MLX
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Display Python version
+        run: python -c "import sys; print(sys.version)"
+
+      - name: Install build dependencies
+        run: |
+          # Install build tools for SciPy and other scientific packages
+          brew install gcc openblas libomp
+          # Find and link gfortran
+          GFORTRAN_PATH=$(brew --prefix gcc)/bin
+          echo "$GFORTRAN_PATH" >> $GITHUB_PATH
+          export PATH="$GFORTRAN_PATH:$PATH"
+          # Configure OpenBLAS paths for pkg-config
+          echo "PKG_CONFIG_PATH=$(brew --prefix openblas)/lib/pkgconfig:$PKG_CONFIG_PATH" >> $GITHUB_ENV
+          # Configure OpenMP paths for clang
+          echo "LDFLAGS=-L$(brew --prefix libomp)/lib" >> $GITHUB_ENV
+          echo "CPPFLAGS=-I$(brew --prefix libomp)/include" >> $GITHUB_ENV
+
+      - name: Cache pip packages
+        uses: actions/cache@v4
+        with:
+          path: ~/Library/Caches/pip
+          key: ${{ runner.os }}-pip-${{ hashFiles('requirements*.txt') }}
+          restore-keys: |
+            ${{ runner.os }}-pip-
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          # Prefer binary wheels, only build from source if absolutely necessary
+          pip install --prefer-binary -r requirements.txt
+          pip install --prefer-binary -r requirements-dev.txt
+
+      - name: Verify MLX installation (Apple Silicon)
+        run: |
+          python -c "import mlx.core as mx; print(f'MLX version: {mx.__version__}')"
+          python -c "import mlx_lm; print('mlx-lm imported successfully')"
+          python -c "import mlx_vlm; print('mlx-vlm imported successfully')"
+
+      - name: Check package versions
+        run: |
+          pip list | grep -E 'mlx|huggingface|PyMuPDF|Pillow|PyYAML'
+
+      - name: Run tests
+        run: |
+          pytest tests/ -v --tb=short
+        continue-on-error: true  # Don't fail if tests are not yet implemented
+
+      - name: Run linters
+        run: |
+          ruff check docscan/ --select E,F,W
+          black --check docscan/ tests/
+        continue-on-error: true
+
+      - name: Check imports
+        run: |
+          python -c "from docscan import model_manager, invoice_detector, pdf_utils"
+          echo "✓ All core modules import successfully"
+
+  dependency-security-check:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install pip-audit
+        run: pip install pip-audit
+
+      - name: Run security audit
+        run: |
+          pip-audit --requirement requirements.txt --requirement requirements-dev.txt
+        continue-on-error: true  # Report but don't block
+
+  compatibility-check:
+    runs-on: macos-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Check Python compatibility
+        run: |
+          pip install vermin
+          vermin --target=3.9- --no-tips docscan/*.py || echo "Vermin check completed"

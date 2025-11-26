@@ -1,0 +1,20 @@
+# Example configuration for doc-scan-intelligent-operator
+# Copy this file to config.yaml and customize as needed
+
+# Vision-Language Model for invoice detection and analysis
+# Recommended models:
+#   - Qwen/Qwen2-VL-7B-Instruct (default, good balance)
+#   - Qwen/Qwen2-VL-2B-Instruct (smaller, faster)
+#   - mlx-community/pixtral-12b-8bit (larger, more accurate)
+vlm_model: Qwen/Qwen2-VL-7B-Instruct
+
+# Model cache directory (where downloaded models are stored)
+# If not specified, defaults to ~/.cache/docscan/models
+# Can use ~ for home directory
+# Recommended: Use external drive for large VLMs (7B models are ~14GB)
+# model_cache_dir: /Volumes/ExternalDrive/models
+
+# VLM generation parameters
+vlm_config:
+  max_tokens: 200  # Maximum tokens for model response
+  temperature: 0.1  # Lower = more deterministic, higher = more creative

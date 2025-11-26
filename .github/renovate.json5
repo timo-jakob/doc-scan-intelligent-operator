@@ -1,0 +1,43 @@
+// GitHub-specific Renovate configuration
+// This extends the base renovate.json with GitHub-specific settings
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "extends": [
+    ":dependencyDashboard",
+    ":semanticCommits",
+    ":timezone(Europe/Berlin)"
+  ],
+
+  // GitHub-specific settings
+  "platformAutomerge": false,
+  "dependencyDashboard": true,
+  "dependencyDashboardTitle": "🤖 Dependency Updates Dashboard",
+  "dependencyDashboardHeader": "This issue lists Renovate updates and detected dependencies. Click a checkbox to manually trigger an update.",
+  "dependencyDashboardFooter": "Managed by [Renovate](https://docs.renovatebot.com/)",
+
+  // Pull Request settings
+  "prCreation": "immediate",
+  "prNotPendingHours": 0,
+  "branchConcurrentLimit": 10,
+  "prConcurrentLimit": 5,
+
+  // Pull Request format
+  "prTitle": "{{semanticPrefix}}{{#if isPin}}pin{{else}}update{{/if}} {{depName}} to {{#if isMajor}}v{{newMajor}}{{else}}{{#if isSingleVersion}}v{{newVersion}}{{else}}{{newValue}}{{/if}}{{/if}}",
+  "prBodyTemplate": "{{{header}}}{{{table}}}{{{notes}}}{{{changelogs}}}{{{configDescription}}}{{{controls}}}{{{footer}}}",
+  "prBodyColumns": [
+    "Package",
+    "Type",
+    "Update",
+    "Change",
+    "Pending"
+  ],
+
+  // Commit message format
+  "commitMessagePrefix": "chore(deps):",
+  "commitMessageTopic": "{{depName}}",
+  "commitMessageExtra": "to {{#if isMajor}}v{{newMajor}}{{else}}{{#if isRange}}{{newValue}}{{else}}v{{newVersion}}{{/if}}{{/if}}",
+
+  // Ignore specific packages or patterns
+  "ignoreDeps": [],
+  "ignorePresets": [":prHourlyLimit2"]
+}
