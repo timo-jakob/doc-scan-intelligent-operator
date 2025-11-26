@@ -17,7 +17,7 @@ jobs:
     runs-on: macos-14  # Apple Silicon M1 for MLX compatibility
     strategy:
       matrix:
-        python-version: ['3.9', '3.10', '3.11', '3.12', '3.13']
+        python-version: ['3.12']  # Primary supported version for MLX
 
     steps:
       - name: Checkout code
