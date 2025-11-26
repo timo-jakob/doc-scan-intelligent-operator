@@ -250,7 +250,7 @@ class ModelManager:
                     try:
                         cache_size += item.stat().st_size
                         model_count += 1
-                    except (OSError, PermissionError):
+                    except OSError:
                         # Skip files we can't access
                         pass
 

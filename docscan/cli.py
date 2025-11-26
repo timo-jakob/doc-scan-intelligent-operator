@@ -26,6 +26,76 @@ def setup_logging(verbose: bool = False):
     )
 
 
+def _validate_input_file(pdf_file: Path, logger) -> None:
+    """Validate that the input file exists and is a valid PDF."""
+    if not pdf_file.exists():
+        logger.error(f"File not found: {pdf_file}")
+        sys.exit(1)
+
+    if not is_valid_pdf(pdf_file):
+        logger.error(f"Invalid PDF file: {pdf_file}")
+        logger.error("This application only supports PDF files.")
+        sys.exit(1)
+
+
+def _prepare_config(args, logger):
+    """Load and prepare configuration from file and CLI arguments."""
+    config = load_config(args.config)
+
+    # Override config with CLI arguments
+    if args.model:
+        config["vlm_model"] = args.model
+
+    # Ensure VLM model is configured
+    if "vlm_model" not in config or not config["vlm_model"]:
+        logger.error("No VLM model configured. Please specify a model with -m or in config.yaml")
+        logger.error("Example: -m Qwen/Qwen2-VL-7B-Instruct")
+        sys.exit(1)
+
+    return config
+
+
+def _process_invoice_result(is_invoice: bool, invoice_data: dict, args) -> None:
+    """Process and display the invoice detection results."""
+    print("\n" + "="*60)
+
+    if is_invoice:
+        print("✓ INVOICE DETECTED")
+        print("="*60)
+        print(f"Invoice Date:      {invoice_data['date']}")
+        print(f"Invoicing Party:   {invoice_data['invoicing_party']}")
+
+        # Generate new filename
+        new_filename = generate_invoice_filename(invoice_data)
+        print(f"\nNew filename:      {new_filename}")
+
+        # Rename file
+        if args.dry_run:
+            print("\n[DRY RUN] File would be renamed (use without --dry-run to actually rename)")
+        else:
+            new_path = rename_invoice(
+                args.pdf_file,
+                new_filename,
+                args.output_dir,
+                dry_run=False
+            )
+
+            if new_path:
+                print("\n✓ File successfully renamed!")
+                print(f"New location: {new_path}")
+            else:
+                print("\n✗ Failed to rename file")
+                sys.exit(1)
+    else:
+        print("✗ NOT AN INVOICE")
+        print("="*60)
+        print("This document does not appear to be an invoice.")
+        print("The application only processes invoices at this time.")
+        print("\nNo action taken.")
+
+    print("="*60 + "\n")
+
+
 def main():
     """Main CLI entry point for invoice processing."""
     parser = argparse.ArgumentParser(
@@ -92,27 +162,10 @@ Examples:
     logger = logging.getLogger(__name__)
 
     # Validate input file
-    if not args.pdf_file.exists():
-        logger.error(f"File not found: {args.pdf_file}")
-        sys.exit(1)
-
-    if not is_valid_pdf(args.pdf_file):
-        logger.error(f"Invalid PDF file: {args.pdf_file}")
-        logger.error("This application only supports PDF files.")
-        sys.exit(1)
+    _validate_input_file(args.pdf_file, logger)
 
     # Load configuration
-    config = load_config(args.config)
-
-    # Override config with CLI arguments
-    if args.model:
-        config["vlm_model"] = args.model
-
-    # Ensure VLM model is configured
-    if "vlm_model" not in config or not config["vlm_model"]:
-        logger.error("No VLM model configured. Please specify a model with -m or in config.yaml")
-        logger.error("Example: -m Qwen/Qwen2-VL-7B-Instruct")
-        sys.exit(1)
+    config = _prepare_config(args, logger)
 
     try:
         # Initialize model manager
@@ -137,43 +190,7 @@ Examples:
         is_invoice, invoice_data = detector.analyze_document(args.pdf_file)
 
         # Report results
-        print("\n" + "="*60)
-
-        if is_invoice:
-            print("✓ INVOICE DETECTED")
-            print("="*60)
-            print(f"Invoice Date:      {invoice_data['date']}")
-            print(f"Invoicing Party:   {invoice_data['invoicing_party']}")
-
-            # Generate new filename
-            new_filename = generate_invoice_filename(invoice_data)
-            print(f"\nNew filename:      {new_filename}")
-
-            # Rename file
-            if args.dry_run:
-                print("\n[DRY RUN] File would be renamed (use without --dry-run to actually rename)")
-            else:
-                new_path = rename_invoice(
-                    args.pdf_file,
-                    new_filename,
-                    args.output_dir,
-                    dry_run=False
-                )
-
-                if new_path:
-                    print(f"\n✓ File successfully renamed!")
-                    print(f"New location: {new_path}")
-                else:
-                    print(f"\n✗ Failed to rename file")
-                    sys.exit(1)
-        else:
-            print("✗ NOT AN INVOICE")
-            print("="*60)
-            print("This document does not appear to be an invoice.")
-            print("The application only processes invoices at this time.")
-            print("\nNo action taken.")
-
-        print("="*60 + "\n")
+        _process_invoice_result(is_invoice, invoice_data, args)
 
     except KeyboardInterrupt:
         logger.info("\n\nOperation cancelled by user")

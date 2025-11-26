@@ -228,7 +228,7 @@ Your response:"""
                 data["date"] = date_match.group(1)
 
         # Extract party
-        party_match = re.search(r'PARTY:\s*(.+?)(?:\n|$)', response, re.IGNORECASE)
+        party_match = re.search(r'PARTY:\s*([^\n]+)', response, re.IGNORECASE)
         if party_match:
             party_name = party_match.group(1).strip()
             # Clean up party name

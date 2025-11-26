@@ -7,6 +7,35 @@ from pathlib import Path
 logger = logging.getLogger(__name__)
 
 
+def _is_valid_pipeline_tag(pipeline_tag: str, is_vlm: bool) -> bool:
+    """Check if pipeline tag is valid for the model type."""
+    if is_vlm:
+        valid_tags = ['image-text-to-text', 'visual-question-answering', 'text-generation']
+        return not pipeline_tag or pipeline_tag in valid_tags
+    else:
+        return pipeline_tag in ['text-generation', 'text2text-generation']
+
+
+def _get_mlx_compatible_architectures() -> list:
+    """Return list of known MLX-compatible architectures."""
+    return [
+        'llama',
+        'mistral',
+        'phi',
+        'qwen',
+        'qwen2',
+        'qwen2_vl',  # VLM
+        'gpt2',
+        'gpt_neox',
+        'stablelm',
+        'mixtral',
+        'llava',  # VLM
+        'llava_next',  # VLM
+        'idefics',  # VLM
+        'paligemma',  # VLM
+    ]
+
+
 def check_mlx_compatibility(model_id: str, is_vlm: bool = False) -> Tuple[bool, Optional[str]]:
     """
     Check if a model is compatible with MLX.
@@ -29,43 +58,19 @@ def check_mlx_compatibility(model_id: str, is_vlm: bool = False) -> Tuple[bool, 
         info = model_info(model_id)
 
         # Check pipeline tag
-        if hasattr(info, 'pipeline_tag'):
-            if is_vlm:
-                # VLMs can have various tags
-                valid_tags = ['image-text-to-text', 'visual-question-answering', 'text-generation']
-                if info.pipeline_tag and info.pipeline_tag not in valid_tags:
-                    # Allow if no pipeline tag specified
-                    pass
-            else:
-                # Text-only models
-                if info.pipeline_tag not in ['text-generation', 'text2text-generation']:
-                    return False, f"Model is {info.pipeline_tag}, not text-generation"
-
-        # List of known MLX-compatible architectures
-        mlx_compatible_architectures = [
-            'llama',
-            'mistral',
-            'phi',
-            'qwen',
-            'qwen2',
-            'qwen2_vl',  # VLM
-            'gpt2',
-            'gpt_neox',
-            'stablelm',
-            'mixtral',
-            'llava',  # VLM
-            'llava_next',  # VLM
-            'idefics',  # VLM
-            'paligemma',  # VLM
-        ]
+        if hasattr(info, 'pipeline_tag') and info.pipeline_tag:
+            if not _is_valid_pipeline_tag(info.pipeline_tag, is_vlm):
+                return False, f"Model is {info.pipeline_tag}, not text-generation"
 
         # Check model architecture from config
         if hasattr(info, 'config') and info.config:
             model_type = info.config.get('model_type', '').lower()
-            if model_type and model_type not in mlx_compatible_architectures:
+            mlx_architectures = _get_mlx_compatible_architectures()
+            
+            if model_type and model_type not in mlx_architectures:
                 return False, (
                     f"Architecture '{model_type}' may not be supported by MLX. "
-                    f"Supported: {', '.join(mlx_compatible_architectures)}"
+                    f"Supported: {', '.join(mlx_architectures)}"
                 )
 
         logger.info(f"Model {model_id} appears to be MLX-compatible")
