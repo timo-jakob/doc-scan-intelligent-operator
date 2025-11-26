@@ -121,7 +121,8 @@ def estimate_model_size(model_id: str) -> Optional[int]:
 
         # Try to parse from model name (e.g., "7B" in model name)
         import re
-        match = re.search(r'(\d+)B', model_id, re.IGNORECASE)
+        # Use a safe, specific regex pattern to avoid ReDoS
+        match = re.search(r'(\d{1,3})B', model_id, re.IGNORECASE)
         if match:
             billions = int(match.group(1))
             # Rough estimate: 7B model ~14GB, scale linearly
