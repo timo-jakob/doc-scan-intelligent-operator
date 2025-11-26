@@ -36,15 +36,7 @@ jobs:
         continue-on-error: true
 
       - name: SonarCloud Scan
-        uses: SonarSource/sonarcloud-github-action@master
+        uses: SonarSource/sonarcloud-github-action@v3.1.0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
-        with:
-          args: >
-            -Dsonar.organization=timo-jakob-github
-            -Dsonar.projectKey=doc-scan-intelligent-operator
-            -Dsonar.python.coverage.reportPaths=coverage.xml
-            -Dsonar.sources=docscan
-            -Dsonar.tests=tests
-            -Dsonar.python.version=3.12
