@@ -1,0 +1,9 @@
+[run]
+source = docscan
+relative_files = True
+
+[report]
+precision = 2
+
+[xml]
+output = coverage.xml

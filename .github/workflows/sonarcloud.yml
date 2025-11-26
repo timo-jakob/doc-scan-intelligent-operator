@@ -32,14 +32,9 @@ jobs:
 
       - name: Run tests with coverage
         run: |
-          pytest tests/ --cov=docscan --cov-report=xml:coverage.xml --cov-report=term
+          # .coveragerc configures relative_files = True for proper SonarCloud paths
+          pytest tests/ --cov=docscan --cov-report=xml --cov-report=term
         continue-on-error: true
-
-      - name: Fix coverage paths for SonarCloud
-        run: |
-          # Convert absolute paths to relative paths in coverage.xml
-          sed -i 's|<source>/home/runner/work/doc-scan-intelligent-operator/doc-scan-intelligent-operator</source>|<source>.</source>|g' coverage.xml
-          sed -i 's|filename="/home/runner/work/doc-scan-intelligent-operator/doc-scan-intelligent-operator/|filename="|g' coverage.xml
 
       - name: SonarCloud Scan
         uses: SonarSource/sonarcloud-github-action@v3.1.0
