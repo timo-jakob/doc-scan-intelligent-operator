@@ -1,6 +1,8 @@
 [run]
 source = docscan
 relative_files = True
+omit =
+    docscan/cli_old.py
 
 [report]
 precision = 2

@@ -9,8 +9,9 @@ def test_load_default_config():
     """Test loading default configuration."""
     config = load_config()
     assert config == DEFAULT_CONFIG
-    assert "model" in config
-    assert "categories" in config
+    assert "vlm_model" in config
+    assert "supported_formats" in config
+    assert "vlm_config" in config
 
 
 def test_load_config_from_file(tmp_path):
