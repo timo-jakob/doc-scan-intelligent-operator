@@ -19,8 +19,38 @@ An AI-powered invoice detection and renaming system using Vision-Language Models
 
 ### Prerequisites
 
-- **Python 3.12** or higher
+- **Python 3.12** (specific version required - see installation below)
 - macOS with Apple Silicon (for MLX acceleration)
+
+**Installing Python 3.12:**
+
+If your system has a different Python version as default (e.g., Python 3.14), you can install Python 3.12 alongside it:
+
+```bash
+# Using Homebrew (recommended)
+brew install python@3.12
+
+# Verify installation
+python3.12 --version
+# Should output: Python 3.12.x
+```
+
+**Alternative: Using pyenv for managing multiple Python versions**
+
+```bash
+# Install pyenv
+brew install pyenv
+
+# Install Python 3.12
+pyenv install 3.12
+
+# Set Python 3.12 for this project directory
+cd /path/to/doc-scan-intelligent-operator
+pyenv local 3.12
+
+# Verify
+python --version  # Should show Python 3.12.x
+```
 
 ### Installation
 
@@ -39,10 +69,15 @@ source venv/bin/activate
 
 ```bash
 # Create Python 3.12 virtual environment
+# Note: Use 'python3.12' explicitly to ensure the correct version
 python3.12 -m venv venv
 
 # Activate virtual environment
 source venv/bin/activate
+
+# Verify you're using Python 3.12
+python --version
+# Should show: Python 3.12.x (not your system's default version)
 
 # Upgrade pip
 pip install --upgrade pip
@@ -52,11 +87,14 @@ pip install -r requirements-dev.txt
 pip install -e .
 ```
 
-**Note:** The virtual environment ensures:
-- Isolated dependencies (won't conflict with system Python)
-- Correct Python 3.12 version
-- Up-to-date pip
-- Clean dependency management
+**Important:** The virtual environment will use Python 3.12 regardless of your system's default Python version. Once the venv is created with `python3.12` and activated, all `python` and `pip` commands will use Python 3.12 from the venv.
+
+**Virtual Environment Benefits:**
+- ✅ Isolated dependencies (won't conflict with system Python)
+- ✅ Uses Python 3.12 specifically (even if system default is Python 3.14 or other)
+- ✅ Up-to-date pip
+- ✅ Clean dependency management
+- ✅ Multiple Python versions can coexist on your system
 
 ### Authentication (Optional)
 
