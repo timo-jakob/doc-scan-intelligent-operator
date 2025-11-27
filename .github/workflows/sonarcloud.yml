@@ -34,10 +34,29 @@ jobs:
         run: |
           # .coveragerc configures relative_files = True for proper SonarCloud paths
           pytest tests/ --cov=docscan --cov-report=xml --cov-report=term
-        continue-on-error: true
 
       - name: SonarCloud Scan
         uses: SonarSource/sonarcloud-github-action@v3.1.0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+
+      - name: Check Quality Gate Status
+        run: |
+          # Wait for SonarCloud to finish processing
+          sleep 10
+
+          # Get the quality gate status
+          QUALITY_GATE=$(curl -s -u "${{ secrets.SONAR_TOKEN }}:" \
+            "https://sonarcloud.io/api/qualitygates/project_status?projectKey=timo-jakob_doc-scan-intelligent-operator" \
+            | jq -r '.projectStatus.status')
+
+          echo "Quality Gate Status: $QUALITY_GATE"
+
+          if [ "$QUALITY_GATE" != "OK" ]; then
+            echo "❌ Quality Gate failed!"
+            echo "View details at: https://sonarcloud.io/dashboard?id=timo-jakob_doc-scan-intelligent-operator"
+            exit 1
+          else
+            echo "✅ Quality Gate passed!"
+          fi
