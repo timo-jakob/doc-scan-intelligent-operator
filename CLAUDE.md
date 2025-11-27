@@ -2,6 +2,36 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+## Development Workflow
+
+**IMPORTANT: Always use GitHub Flow for bug fixes and feature development**
+
+When fixing bugs or implementing features, you MUST:
+
+1. **Create a new branch** from `main` with a descriptive name:
+   ```bash
+   git checkout -b fix/issue-description
+   # or
+   git checkout -b feature/feature-name
+   ```
+
+2. **Commit changes** to the branch (NOT directly to `main`)
+   - Use clear, descriptive commit messages
+   - Include the Claude Code co-authorship footer
+
+3. **Open a Pull Request** when ready for review:
+   ```bash
+   gh pr create --title "Fix: Description" --body "..."
+   ```
+
+4. **Do NOT commit directly to `main`** - all changes should go through Pull Requests
+
+Branch naming conventions:
+- Bug fixes: `fix/short-description`
+- Features: `feature/short-description`
+- Refactoring: `refactor/short-description`
+- Documentation: `docs/short-description`
+
 ## Project Overview
 
 **doc-scan-intelligent-operator** - An AI-powered invoice detection and renaming system that uses Vision-Language Models (VLMs) with MLX acceleration for Apple Silicon. The system analyzes PDF invoices, extracts key information (date, invoicing party), and renames files intelligently.
