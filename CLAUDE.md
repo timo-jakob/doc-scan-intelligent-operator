@@ -55,6 +55,20 @@ Branch naming conventions:
 
 **IMPORTANT:** This project uses a Python 3.12 virtual environment for all development and CLI usage.
 
+**If you don't have Python 3.12 installed:**
+
+Even if your system default is Python 3.14 or another version, you can install Python 3.12 alongside it:
+
+```bash
+# Install Python 3.12 via Homebrew (coexists with other Python versions)
+brew install python@3.12
+
+# Verify
+python3.12 --version  # Should show Python 3.12.x
+```
+
+**Installation:**
+
 ```bash
 # Install in development mode with dev dependencies
 # This automatically creates a Python 3.12 venv at ./venv
@@ -62,6 +76,9 @@ make install-dev
 
 # Activate the virtual environment
 source venv/bin/activate
+
+# Verify you're using Python 3.12 in the venv
+python --version  # Should show Python 3.12.x (not your system default)
 
 # Or manually:
 python3.12 -m venv venv
@@ -73,9 +90,10 @@ pip install -e .
 
 **Virtual Environment Benefits:**
 - Isolated dependencies (no conflicts with system Python)
-- Ensures Python 3.12 is used
+- Uses Python 3.12 specifically (even if system default is different)
 - Up-to-date pip
 - Clean dependency management
+- Multiple Python versions can coexist peacefully on your system
 
 ### Running Tests
 ```bash
