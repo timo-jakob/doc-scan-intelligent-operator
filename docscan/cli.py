@@ -40,7 +40,11 @@ def _validate_input_file(pdf_file: Path, logger) -> None:
 
 def _prepare_config(args, logger):
     """Load and prepare configuration from file and CLI arguments."""
-    config = load_config(args.config)
+    try:
+        config = load_config(args.config)
+    except (FileNotFoundError, ValueError) as e:
+        logger.error(f"Configuration error: {e}")
+        sys.exit(1)
 
     # Override config with CLI arguments
     if args.model:

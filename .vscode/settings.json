@@ -1,0 +1,6 @@
+{
+    "sonarlint.connectedMode.project": {
+        "connectionId": "timo-jakob-github",
+        "projectKey": "timo-jakob_doc-scan-intelligent-operator"
+    }
+}

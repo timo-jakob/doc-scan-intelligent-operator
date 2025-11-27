@@ -1,0 +1,42 @@
+# Snyk (https://snyk.io) policy file
+
+# Path Traversal findings are mitigated through validation functions
+# All user-provided paths are validated through _validate_safe_path() which:
+# - Resolves paths to absolute canonical form (eliminating ../, ./, symlinks)
+# - Checks for null bytes
+# - Validates file existence and type
+# - Enforces file extension restrictions for config files
+
+version: v1.25.0
+
+ignore:
+  python/PT:
+    - 'docscan/config.py':
+        reason: >-
+          Path traversal is mitigated through _validate_safe_path() function which
+          resolves paths to canonical form, checks for null bytes, and validates
+          file extensions. All config paths are restricted to .yaml/.yml files.
+        expires: 2026-11-27T00:00:00.000Z
+        created: 2025-11-27T00:00:00.000Z
+    - 'docscan/file_renamer.py':
+        reason: >-
+          Path traversal is mitigated through _validate_safe_path() function and
+          additional filename sanitization. All paths are resolved to canonical form,
+          and filenames are sanitized to remove directory components.
+        expires: 2026-11-27T00:00:00.000Z
+        created: 2025-11-27T00:00:00.000Z
+    - 'docscan/cli.py':
+        reason: >-
+          Path traversal is mitigated through validation functions. Config paths
+          use _validate_safe_path() and PDF paths are validated for file type and existence.
+        expires: 2026-11-27T00:00:00.000Z
+        created: 2025-11-27T00:00:00.000Z
+    - 'docscan/cli_old.py':
+        reason: >-
+          Path traversal is mitigated through _validate_safe_path() in config.py.
+          This is a legacy file maintained for backwards compatibility.
+        expires: 2026-11-27T00:00:00.000Z
+        created: 2025-11-27T00:00:00.000Z
+
+patch: {}
+

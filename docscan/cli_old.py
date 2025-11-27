@@ -67,7 +67,11 @@ def main():
     setup_logging(args.verbose)
 
     # Load configuration
-    config = load_config(args.config)
+    try:
+        config = load_config(args.config)
+    except (FileNotFoundError, ValueError) as e:
+        print(f"Configuration error: {e}", file=sys.stderr)
+        sys.exit(1)
 
     # Override config with CLI arguments
     if args.model:

@@ -8,6 +8,35 @@ from typing import Optional
 logger = logging.getLogger(__name__)
 
 
+def _validate_safe_path(path: Path, must_exist: bool = True) -> Path:
+    """
+    Validate that a path is safe to use (no path traversal).
+    
+    Args:
+        path: Path to validate
+        must_exist: Whether the path must exist
+        
+    Returns:
+        Resolved absolute path
+        
+    Raises:
+        ValueError: If path is unsafe
+        FileNotFoundError: If path doesn't exist and must_exist is True
+    """
+    # Convert to Path object and resolve to absolute path
+    resolved_path = Path(path).resolve()
+    
+    # Check for null bytes (path traversal attack vector)
+    if '\0' in str(path):
+        raise ValueError("Path contains null bytes")
+    
+    # Verify path exists if required
+    if must_exist and not resolved_path.exists():
+        raise FileNotFoundError(f"Path does not exist: {resolved_path}")
+    
+    return resolved_path
+
+
 def rename_invoice(
     original_path: Path,
     new_filename: str,
@@ -26,19 +55,44 @@ def rename_invoice(
     Returns:
         New file path if successful, None if failed or dry_run
     """
-    if not original_path.exists():
-        logger.error(f"File does not exist: {original_path}")
+    # Validate and resolve path to prevent path traversal
+    try:
+        original_path = _validate_safe_path(original_path, must_exist=True)
+    except (ValueError, FileNotFoundError) as e:
+        logger.error(f"Invalid original path: {e}")
+        return None
+    
+    if not original_path.is_file():
+        logger.error(f"Path is not a file: {original_path}")
+        return None
+
+    # Sanitize filename to prevent path traversal
+    # Remove any directory separators from the filename
+    new_filename = Path(new_filename).name
+    if not new_filename or new_filename in ['.', '..'] or '\0' in new_filename:
+        logger.error(f"Invalid filename: {new_filename}")
         return None
 
     # Determine target directory
     if output_dir:
-        target_dir = Path(output_dir)
-        target_dir.mkdir(parents=True, exist_ok=True)
+        try:
+            target_dir = _validate_safe_path(output_dir, must_exist=False)
+            target_dir.mkdir(parents=True, exist_ok=True)
+        except ValueError as e:
+            logger.error(f"Invalid output directory: {e}")
+            return None
     else:
         target_dir = original_path.parent
 
     # Create new path
-    new_path = target_dir / new_filename
+    new_path = (target_dir / new_filename).resolve()
+    
+    # Ensure the new path is within the target directory (prevent path traversal)
+    try:
+        new_path.relative_to(target_dir)
+    except ValueError:
+        logger.error("Invalid path: new file would be outside target directory")
+        return None
 
     # Check if target already exists
     if new_path.exists() and new_path != original_path:
