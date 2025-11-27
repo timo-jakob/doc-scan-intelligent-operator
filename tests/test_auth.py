@@ -55,7 +55,7 @@ def test_get_token_none_when_not_found(monkeypatch):
         assert token is None
 
 
-@patch("docscan.auth.login")
+@patch("huggingface_hub.login")
 def test_login_success(mock_login, monkeypatch):
     """Test successful login to HuggingFace."""
     monkeypatch.setenv("HF_TOKEN", "test_token")
@@ -66,7 +66,7 @@ def test_login_success(mock_login, monkeypatch):
     mock_login.assert_called_once_with(token="test_token", add_to_git_credential=False)
 
 
-@patch("docscan.auth.login")
+@patch("huggingface_hub.login")
 def test_login_with_explicit_token(mock_login):
     """Test login with explicitly provided token."""
     mock_login.return_value = None

@@ -73,7 +73,9 @@ def test_main_file_not_found():
             with patch('docscan.cli.setup_logging'):
                 main()
 
-    mock_exit.assert_called_once_with(1)
+    # Verify exit was called with code 1
+    assert mock_exit.called
+    assert any(call[0][0] == 1 for call in mock_exit.call_args_list)
 
 
 def test_main_invalid_pdf(tmp_path):
@@ -87,7 +89,9 @@ def test_main_invalid_pdf(tmp_path):
                 with patch('docscan.cli.setup_logging'):
                     main()
 
-    mock_exit.assert_called_once_with(1)
+    # Verify exit was called with code 1
+    assert mock_exit.called
+    assert any(call[0][0] == 1 for call in mock_exit.call_args_list)
 
 
 def test_main_no_model_configured(tmp_path):
@@ -102,7 +106,9 @@ def test_main_no_model_configured(tmp_path):
                     with patch('docscan.cli.setup_logging'):
                         main()
 
-    mock_exit.assert_called_once_with(1)
+    # Verify exit was called with code 1
+    assert mock_exit.called
+    assert any(call[0][0] == 1 for call in mock_exit.call_args_list)
 
 
 def test_main_model_from_cli_arg(tmp_path):

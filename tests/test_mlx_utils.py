@@ -38,7 +38,7 @@ def test_get_available_disk_space_for_file(tmp_path):
     assert space > 0
 
 
-@patch("docscan.mlx_utils.model_info")
+@patch("huggingface_hub.model_info")
 def test_check_mlx_compatibility_text_generation(mock_model_info):
     """Test MLX compatibility check for text generation model."""
     mock_info = MagicMock()
@@ -51,7 +51,7 @@ def test_check_mlx_compatibility_text_generation(mock_model_info):
     assert reason is None
 
 
-@patch("docscan.mlx_utils.model_info")
+@patch("huggingface_hub.model_info")
 def test_check_mlx_compatibility_wrong_pipeline(mock_model_info):
     """Test MLX compatibility check for non-text-generation model."""
     mock_info = MagicMock()
@@ -63,7 +63,7 @@ def test_check_mlx_compatibility_wrong_pipeline(mock_model_info):
     assert "image-classification" in reason
 
 
-@patch("docscan.mlx_utils.model_info")
+@patch("huggingface_hub.model_info")
 def test_check_mlx_compatibility_unsupported_architecture(mock_model_info):
     """Test MLX compatibility for unsupported architecture."""
     mock_info = MagicMock()
@@ -76,7 +76,7 @@ def test_check_mlx_compatibility_unsupported_architecture(mock_model_info):
     assert "unsupported_arch" in reason
 
 
-@patch("docscan.mlx_utils.model_info")
+@patch("huggingface_hub.model_info")
 def test_estimate_model_size_from_files(mock_model_info):
     """Test model size estimation from file sizes."""
     mock_file1 = MagicMock()
@@ -92,7 +92,7 @@ def test_estimate_model_size_from_files(mock_model_info):
     assert size == 1024 * 1024 * 300  # 300 MB total
 
 
-@patch("docscan.mlx_utils.model_info")
+@patch("huggingface_hub.model_info")
 def test_estimate_model_size_from_name(mock_model_info):
     """Test model size estimation from model name."""
     mock_info = MagicMock()
