@@ -1,4 +1,4 @@
-.PHONY: help venv install install-dev test lint format clean clean-venv run
+.PHONY: help venv install install-dev test lint format clean clean-venv run check-python
 
 VENV := venv
 PYTHON := python3.12
@@ -17,13 +17,35 @@ help:
 	@echo "  make clean-venv   - Remove virtual environment"
 	@echo "  make run          - Run the CLI (use ARGS='...' for arguments)"
 
-venv:
+check-python:
+	@echo "Checking for Python 3.12..."
+	@which $(PYTHON) > /dev/null 2>&1 || \
+		(echo "❌ ERROR: Python 3.12 not found!"; \
+		 echo ""; \
+		 echo "Please install Python 3.12:"; \
+		 echo "  brew install python@3.12"; \
+		 echo ""; \
+		 echo "Then verify with:"; \
+		 echo "  python3.12 --version"; \
+		 exit 1)
+	@echo "✓ Found: $$($(PYTHON) --version)"
+
+venv: check-python
 	@echo "Creating Python 3.12 virtual environment..."
-	@if [ ! -d "$(VENV)" ]; then \
-		$(PYTHON) -m venv $(VENV); \
-		echo "Virtual environment created at ./$(VENV)"; \
+	@if [ -d "$(VENV)" ]; then \
+		VENV_VERSION=$$($(VENV_PYTHON) --version 2>&1 | grep -oE '[0-9]+\.[0-9]+'); \
+		if [ "$$VENV_VERSION" != "3.12" ]; then \
+			echo "❌ ERROR: Existing venv uses Python $$VENV_VERSION, not 3.12"; \
+			echo ""; \
+			echo "Please remove the old venv and try again:"; \
+			echo "  make clean-venv"; \
+			echo "  make install-dev"; \
+			exit 1; \
+		fi; \
+		echo "✓ Virtual environment already exists with Python 3.12"; \
 	else \
-		echo "Virtual environment already exists at ./$(VENV)"; \
+		$(PYTHON) -m venv $(VENV); \
+		echo "✓ Virtual environment created at ./$(VENV)"; \
 	fi
 	@echo "Upgrading pip..."
 	@$(VENV_PIP) install --upgrade pip
