@@ -2,7 +2,7 @@
 # Fixed versions for stability - managed by Renovate
 
 # MLX for Apple Silicon acceleration
-mlx==0.21.1
+mlx==0.30.0
 mlx-lm==0.20.3
 mlx-vlm==0.1.1
 
