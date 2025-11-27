@@ -17,16 +17,46 @@ An AI-powered invoice detection and renaming system using Vision-Language Models
 
 ## Quick Start
 
+### Prerequisites
+
+- **Python 3.12** or higher
+- macOS with Apple Silicon (for MLX acceleration)
+
 ### Installation
 
+**Using Make (Recommended):**
+
 ```bash
-# Install dependencies
+# Install with development dependencies
+# This automatically creates a Python 3.12 virtual environment
 make install-dev
 
-# Or manually
+# Activate the virtual environment
+source venv/bin/activate
+```
+
+**Manual Installation:**
+
+```bash
+# Create Python 3.12 virtual environment
+python3.12 -m venv venv
+
+# Activate virtual environment
+source venv/bin/activate
+
+# Upgrade pip
+pip install --upgrade pip
+
+# Install dependencies
 pip install -r requirements-dev.txt
 pip install -e .
 ```
+
+**Note:** The virtual environment ensures:
+- Isolated dependencies (won't conflict with system Python)
+- Correct Python 3.12 version
+- Up-to-date pip
+- Clean dependency management
 
 ### Authentication (Optional)
 
@@ -43,6 +73,13 @@ echo "your_huggingface_token" > ~/.huggingface/token
 
 ### Basic Usage
 
+**Important:** Make sure the virtual environment is activated before running commands:
+```bash
+source venv/bin/activate
+```
+
+Then run the CLI:
+
 ```bash
 # Analyze and rename an invoice
 docscan invoice.pdf
@@ -58,6 +95,13 @@ docscan invoice.pdf -m Qwen/Qwen2-VL-2B-Instruct
 
 # Verbose output for debugging
 docscan invoice.pdf -v
+```
+
+**Using Make:**
+```bash
+# Run without activating venv (Make handles it)
+make run ARGS="invoice.pdf"
+make run ARGS="invoice.pdf --dry-run"
 ```
 
 **Example Output:**
@@ -105,17 +149,45 @@ vlm_config:
 
 See [CLAUDE.md](CLAUDE.md) for detailed architecture and development information.
 
+### Setting Up Development Environment
+
+```bash
+# Install with development dependencies
+make install-dev
+
+# Activate virtual environment
+source venv/bin/activate
+```
+
 ### Running Tests
 
 ```bash
+# With virtual environment activated
+pytest
+
+# Or using Make (handles venv automatically)
 make test
 ```
 
 ### Code Quality
 
 ```bash
+# With virtual environment activated
+ruff check docscan tests
+mypy docscan
+black docscan tests
+
+# Or using Make (handles venv automatically)
 make lint    # Run linters
 make format  # Format code
+```
+
+### Virtual Environment Management
+
+```bash
+make venv        # Create virtual environment
+make clean-venv  # Remove virtual environment
+make clean       # Remove build artifacts
 ```
 
 ## How It Works

@@ -52,14 +52,30 @@ Branch naming conventions:
 ## Development Commands
 
 ### Setup
+
+**IMPORTANT:** This project uses a Python 3.12 virtual environment for all development and CLI usage.
+
 ```bash
 # Install in development mode with dev dependencies
+# This automatically creates a Python 3.12 venv at ./venv
 make install-dev
 
+# Activate the virtual environment
+source venv/bin/activate
+
 # Or manually:
+python3.12 -m venv venv
+source venv/bin/activate
+pip install --upgrade pip
 pip install -r requirements-dev.txt
 pip install -e .
 ```
+
+**Virtual Environment Benefits:**
+- Isolated dependencies (no conflicts with system Python)
+- Ensures Python 3.12 is used
+- Up-to-date pip
+- Clean dependency management
 
 ### Running Tests
 ```bash
@@ -89,6 +105,13 @@ make clean
 ```
 
 ### Running the Application
+
+**Ensure virtual environment is activated:**
+```bash
+source venv/bin/activate
+```
+
+**Then run commands:**
 ```bash
 # Analyze and rename an invoice
 docscan invoice.pdf
@@ -104,6 +127,12 @@ docscan invoice.pdf -m Qwen/Qwen2-VL-2B-Instruct
 
 # Verbose output
 docscan invoice.pdf -v
+```
+
+**Or use Make (handles venv automatically):**
+```bash
+make run ARGS="invoice.pdf"
+make run ARGS="invoice.pdf --dry-run"
 ```
 
 ## Project Architecture
