@@ -472,3 +472,321 @@ def test_generate_invoice_filename_preserves_extension():
     filename = generate_invoice_filename(invoice_data)
 
     assert filename.endswith(".pdf")
+
+
+# ============================================================================
+# Text LLM Mode Tests
+# ============================================================================
+
+def test_invoice_detector_init_text_llm_mode(mock_model, mock_tokenizer, config):
+    """Test InvoiceDetector initialization in text LLM mode."""
+    detector = InvoiceDetector(mock_model, mock_tokenizer, config, use_text_llm=True)
+
+    assert detector.model == mock_model
+    assert detector.processor == mock_tokenizer
+    assert detector.config == config
+    assert detector.use_text_llm is True
+
+
+def test_analyze_document_text_llm_mode(mock_model, mock_tokenizer, config, tmp_path, mock_image):
+    """Test analyze_document in text LLM mode."""
+    detector = InvoiceDetector(mock_model, mock_tokenizer, config, use_text_llm=True)
+    pdf_path = tmp_path / "invoice.pdf"
+    pdf_path.touch()
+
+    invoice_data = {
+        "date": "2024-01-15",
+        "invoicing_party": "ACME Corp",
+        "detection_method": "Text LLM",
+        "extraction_method": "OCR + Text LLM"
+    }
+
+    with patch('docscan.invoice_detector.is_valid_pdf', return_value=True):
+        with patch('docscan.invoice_detector.pdf_to_images', return_value=[mock_image]):
+            with patch.object(detector, '_analyze_with_text_llm', return_value=(True, invoice_data)):
+                is_invoice, data = detector.analyze_document(pdf_path)
+
+    assert is_invoice is True
+    assert data["date"] == "2024-01-15"
+    assert data["detection_method"] == "Text LLM"
+
+
+def test_analyze_with_text_llm_success(mock_model, mock_tokenizer, config, mock_image):
+    """Test successful text LLM analysis."""
+    detector = InvoiceDetector(mock_model, mock_tokenizer, config, use_text_llm=True)
+
+    mock_pytesseract = MagicMock()
+    mock_pytesseract.image_to_string.return_value = "Rechnungsdatum: 15.01.2024\nChiropraktik White"
+
+    with patch.dict('sys.modules', {'pytesseract': mock_pytesseract}):
+        with patch.object(detector, '_query_text_llm_for_invoice') as mock_query:
+            mock_query.return_value = (True, {
+                "date": "2024-01-15",
+                "invoicing_party": "Chiropraktik White"
+            })
+
+            is_invoice, data = detector._analyze_with_text_llm(mock_image)
+
+    assert is_invoice is True
+    assert data["date"] == "2024-01-15"
+    assert data["detection_method"] == "Text LLM"
+    assert data["extraction_method"] == "OCR + Text LLM"
+
+
+def test_analyze_with_text_llm_pytesseract_unavailable(mock_model, mock_tokenizer, config, mock_image):
+    """Test text LLM analysis when pytesseract is unavailable."""
+    detector = InvoiceDetector(mock_model, mock_tokenizer, config, use_text_llm=True)
+
+    with patch.dict('sys.modules', {'pytesseract': None}):
+        is_invoice, data = detector._analyze_with_text_llm(mock_image)
+
+    assert is_invoice is False
+    assert data is None
+
+
+def test_query_text_llm_for_invoice_success(mock_model, mock_tokenizer, config):
+    """Test successful text LLM query for invoice detection."""
+    detector = InvoiceDetector(mock_model, mock_tokenizer, config, use_text_llm=True)
+
+    llm_response = """INVOICE: YES
+DATE: 2024-01-15
+ISSUER: Chiropraktik White"""
+
+    with patch.object(detector, '_query_text_llm', return_value=llm_response):
+        is_invoice, data = detector._query_text_llm_for_invoice("Sample OCR text")
+
+    assert is_invoice is True
+    assert data["date"] == "2024-01-15"
+    assert "Chiropraktik" in data["invoicing_party"] or "White" in data["invoicing_party"]
+
+
+def test_query_text_llm_for_invoice_not_invoice(mock_model, mock_tokenizer, config):
+    """Test text LLM query when document is not an invoice."""
+    detector = InvoiceDetector(mock_model, mock_tokenizer, config, use_text_llm=True)
+
+    llm_response = """INVOICE: NO
+DATE: N/A
+ISSUER: N/A"""
+
+    with patch.object(detector, '_query_text_llm', return_value=llm_response):
+        is_invoice, data = detector._query_text_llm_for_invoice("Sample OCR text")
+
+    assert is_invoice is False
+
+
+def test_query_text_llm(mock_model, mock_tokenizer, config):
+    """Test text LLM query execution."""
+    detector = InvoiceDetector(mock_model, mock_tokenizer, config, use_text_llm=True)
+
+    # Mock mlx_lm modules
+    mock_generate = MagicMock(return_value="Test response from LLM")
+    mock_make_sampler = MagicMock(return_value=lambda: None)
+    mock_mlx_lm = MagicMock()
+    mock_mlx_lm.generate = mock_generate
+    mock_sample_utils = MagicMock()
+    mock_sample_utils.make_sampler = mock_make_sampler
+
+    with patch.dict('sys.modules', {'mlx_lm': mock_mlx_lm, 'mlx_lm.sample_utils': mock_sample_utils}):
+        with patch.object(detector, '_build_chat_prompt', return_value="formatted prompt"):
+            response = detector._query_text_llm("system", "user")
+
+    assert response == "Test response from LLM"
+    mock_generate.assert_called_once()
+
+
+def test_build_chat_prompt_with_chat_template(mock_model, mock_tokenizer, config):
+    """Test chat prompt building with tokenizer that has chat template."""
+    detector = InvoiceDetector(mock_model, mock_tokenizer, config, use_text_llm=True)
+
+    mock_tok = MagicMock()
+    mock_tok.apply_chat_template = MagicMock(return_value="<chat>formatted</chat>")
+
+    prompt = detector._build_chat_prompt(mock_tok, "System message", "User message")
+
+    assert prompt == "<chat>formatted</chat>"
+    mock_tok.apply_chat_template.assert_called_once()
+
+
+def test_build_chat_prompt_fallback(mock_model, mock_tokenizer, config):
+    """Test chat prompt building fallback when no chat template."""
+    detector = InvoiceDetector(mock_model, mock_tokenizer, config, use_text_llm=True)
+
+    mock_tok = MagicMock()
+    mock_tok.apply_chat_template = MagicMock(side_effect=Exception("No template"))
+
+    prompt = detector._build_chat_prompt(mock_tok, "System message", "User message")
+
+    assert "System message" in prompt
+    assert "User message" in prompt
+
+
+# ============================================================================
+# OCR Text Parsing Tests
+# ============================================================================
+
+def test_parse_ocr_text(invoice_detector):
+    """Test OCR text parsing."""
+    ocr_text = """Chiropraktik White
+Rechnungsdatum: 15.01.2024
+Total: 100.00 CHF"""
+
+    data = invoice_detector._parse_ocr_text(ocr_text)
+
+    assert "date" in data
+    assert "invoicing_party" in data
+    assert "invoicing_party_filename" in data
+
+
+def test_extract_date_from_text_rechnungsdatum(invoice_detector):
+    """Test date extraction with Rechnungsdatum pattern."""
+    text = "Rechnungsdatum: 15.01.2024"
+
+    date = invoice_detector._extract_date_from_text(text)
+
+    assert date == "2024-01-15"
+
+
+def test_extract_date_from_text_invoice_date(invoice_detector):
+    """Test date extraction with Invoice Date pattern."""
+    text = "Invoice Date: 01/15/2024"
+
+    date = invoice_detector._extract_date_from_text(text)
+
+    assert "2024" in date
+
+
+def test_extract_date_from_text_no_match(invoice_detector):
+    """Test date extraction with no date found."""
+    text = "No date here"
+
+    date = invoice_detector._extract_date_from_text(text)
+
+    assert date == "0000-00-00"
+
+
+def test_extract_company_from_text_practice_name(invoice_detector):
+    """Test company extraction finds practice names."""
+    text = """Chiropraktik White
+Address line
+Phone: 123456"""
+
+    display, filename = invoice_detector._extract_company_from_text(text)
+
+    assert "Chiropraktik" in display or "White" in display
+
+
+def test_find_practice_name(invoice_detector):
+    """Test finding practice name patterns."""
+    lines = [
+        "Header",
+        "Chiropraktik White",
+        "Address"
+    ]
+
+    result = invoice_detector._find_practice_name(lines)
+
+    assert result is not None
+    assert "Chiropraktik" in result[0] or "White" in result[0]
+
+
+def test_find_legal_entity_gmbh(invoice_detector):
+    """Test finding GmbH legal entity."""
+    lines = [
+        "ACME Solutions GmbH",
+        "Address line"
+    ]
+
+    result = invoice_detector._find_legal_entity(lines)
+
+    assert result is not None
+    assert "ACME" in result[0] and "GmbH" in result[0]
+
+
+def test_find_legal_entity_ag(invoice_detector):
+    """Test finding AG legal entity."""
+    lines = [
+        "Tech Corp AG",
+        "Address line"
+    ]
+
+    result = invoice_detector._find_legal_entity(lines)
+
+    assert result is not None
+    assert "AG" in result[0]
+
+
+def test_find_header_company(invoice_detector):
+    """Test finding company in header area."""
+    lines = [
+        "Company Name Here",
+        "Address",
+        "Phone"
+    ]
+
+    display, filename = invoice_detector._find_header_company(lines)
+
+    assert display == "Company Name Here"
+
+
+def test_is_potential_company_line_valid(invoice_detector):
+    """Test potential company line detection - valid."""
+    line = "ACME Corporation"
+
+    result = invoice_detector._is_potential_company_line(line)
+
+    assert result is True
+
+
+def test_is_potential_company_line_too_short(invoice_detector):
+    """Test potential company line detection - too short."""
+    line = "AB"
+
+    result = invoice_detector._is_potential_company_line(line)
+
+    assert result is False
+
+
+def test_convert_date_to_iso_ddmmyyyy(invoice_detector):
+    """Test date conversion from DD.MM.YYYY."""
+    date_str = "15.01.2024"
+
+    iso_date = invoice_detector._convert_date_to_iso(date_str)
+
+    assert iso_date == "2024-01-15"
+
+
+def test_convert_date_to_iso_mmddyyyy(invoice_detector):
+    """Test date conversion from MM/DD/YYYY."""
+    date_str = "01/15/2024"
+
+    iso_date = invoice_detector._convert_date_to_iso(date_str)
+
+    assert iso_date == "2024-01-15"
+
+
+def test_convert_date_to_iso_invalid(invoice_detector):
+    """Test date conversion with invalid date."""
+    date_str = "99/99/9999"
+
+    iso_date = invoice_detector._convert_date_to_iso(date_str)
+
+    assert iso_date == "0000-00-00"
+
+
+def test_clean_display_name(invoice_detector):
+    """Test display name cleaning."""
+    text = "  ACME  Corp  "
+
+    cleaned = invoice_detector._clean_display_name(text)
+
+    assert cleaned == "ACME Corp"
+
+
+def test_clean_display_name_removes_extra_spaces(invoice_detector):
+    """Test display name removes multiple spaces."""
+    text = "ACME    Corporation    Inc"
+
+    cleaned = invoice_detector._clean_display_name(text)
+
+    assert "    " not in cleaned
+    assert "ACME" in cleaned
