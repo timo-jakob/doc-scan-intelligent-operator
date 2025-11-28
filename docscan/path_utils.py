@@ -23,13 +23,14 @@ def validate_safe_path(path: Path, must_exist: bool = True) -> Path:
         ValueError: If path is unsafe
         FileNotFoundError: If path doesn't exist and must_exist is True
     """
+    # Check for null bytes (path traversal attack vector)
+    # Must check before resolve() since resolve() raises OSError on null bytes
+    if '\0' in str(path):
+        raise ValueError("Path contains null bytes")
+
     # Convert to Path object and resolve to absolute path
     # resolve() canonicalizes the path, removing .. and . components
     resolved_path = Path(path).resolve()
-
-    # Check for null bytes (path traversal attack vector)
-    if '\0' in str(path):
-        raise ValueError("Path contains null bytes")
 
     # Verify path exists if required
     if must_exist and not resolved_path.exists():

@@ -61,3 +61,57 @@ def test_organize_documents(tmp_path):
     # Check results
     assert (tmp_path / "output" / "invoice" / "invoice.pdf").exists()
     assert (tmp_path / "output" / "receipt" / "receipt.pdf").exists()
+
+
+def test_get_destination_path_by_date(tmp_path):
+    """Test destination path generation by date."""
+    config = {
+        "output_dir": str(tmp_path / "output"),
+        "organize_by": "date"
+    }
+    organizer = DocumentOrganizer(config)
+
+    document = {
+        "name": "invoice.pdf",
+        "category": "invoice"
+    }
+
+    dest = organizer._get_destination_path(document)
+    # Should use unknown_date since date extraction is TODO
+    assert dest == tmp_path / "output" / "unknown_date" / "invoice.pdf"
+
+
+def test_get_destination_path_by_category_and_date(tmp_path):
+    """Test destination path generation by category and date."""
+    config = {
+        "output_dir": str(tmp_path / "output"),
+        "organize_by": "category/date"
+    }
+    organizer = DocumentOrganizer(config)
+
+    document = {
+        "name": "invoice.pdf",
+        "category": "invoice"
+    }
+
+    dest = organizer._get_destination_path(document)
+    # Should use unknown_date since date extraction is TODO
+    assert dest == tmp_path / "output" / "invoice" / "unknown_date" / "invoice.pdf"
+
+
+def test_get_destination_path_no_organization(tmp_path):
+    """Test destination path generation with no organization."""
+    config = {
+        "output_dir": str(tmp_path / "output"),
+        "organize_by": "none"
+    }
+    organizer = DocumentOrganizer(config)
+
+    document = {
+        "name": "invoice.pdf",
+        "category": "invoice"
+    }
+
+    dest = organizer._get_destination_path(document)
+    # Should place directly in output_dir
+    assert dest == tmp_path / "output" / "invoice.pdf"
