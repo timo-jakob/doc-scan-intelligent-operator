@@ -52,9 +52,10 @@ def test_invoice_detector_init(mock_model, mock_tokenizer, config):
     detector = InvoiceDetector(mock_model, mock_tokenizer, config)
 
     assert detector.model == mock_model
-    assert detector.tokenizer == mock_tokenizer
+    assert detector.processor == mock_tokenizer
     assert detector.config == config
     assert detector.vlm_config == config["vlm_config"]
+    assert detector.use_text_llm is False
 
 
 def test_invoice_detector_init_no_vlm_config(mock_model, mock_tokenizer):
@@ -141,16 +142,16 @@ def test_analyze_document_exception(invoice_detector, tmp_path):
 
 
 def test_detect_invoice_yes(invoice_detector, mock_image):
-    """Test invoice detection with YES response."""
-    with patch.object(invoice_detector, '_query_vlm', return_value="YES"):
+    """Test invoice detection with INVOICE response."""
+    with patch.object(invoice_detector, '_query_vlm', return_value="INVOICE"):
         result = invoice_detector._detect_invoice(mock_image)
 
     assert result is True
 
 
-def test_detect_invoice_ja(invoice_detector, mock_image):
-    """Test invoice detection with JA (German) response."""
-    with patch.object(invoice_detector, '_query_vlm', return_value="JA"):
+def test_detect_invoice_rechnung(invoice_detector, mock_image):
+    """Test invoice detection with RECHNUNG (German) response."""
+    with patch.object(invoice_detector, '_query_vlm', return_value="RECHNUNG"):
         result = invoice_detector._detect_invoice(mock_image)
 
     assert result is True
@@ -166,7 +167,7 @@ def test_detect_invoice_no(invoice_detector, mock_image):
 
 def test_detect_invoice_case_insensitive(invoice_detector, mock_image):
     """Test invoice detection is case insensitive."""
-    with patch.object(invoice_detector, '_query_vlm', return_value="yes"):
+    with patch.object(invoice_detector, '_query_vlm', return_value="invoice"):
         result = invoice_detector._detect_invoice(mock_image)
 
     assert result is True
@@ -174,7 +175,7 @@ def test_detect_invoice_case_insensitive(invoice_detector, mock_image):
 
 def test_detect_invoice_with_extra_text(invoice_detector, mock_image):
     """Test invoice detection with extra text in response."""
-    response = "After analyzing the document, the answer is YES, this is an invoice."
+    response = "After analyzing the document, this is an INVOICE."
     with patch.object(invoice_detector, '_query_vlm', return_value=response):
         result = invoice_detector._detect_invoice(mock_image)
 
@@ -190,29 +191,39 @@ def test_detect_invoice_exception(invoice_detector, mock_image):
 
 
 def test_extract_invoice_data_success(invoice_detector, mock_image):
-    """Test successful invoice data extraction."""
-    response = "DATE: 2024-01-15\nPARTY: ACME Corporation"
+    """Test successful invoice data extraction via OCR."""
+    mock_pytesseract = MagicMock()
+    mock_pytesseract.image_to_string.return_value = "Rechnungsdatum: 15.01.2024\nChiropraktik White\nTotal: 100.00"
 
-    with patch.object(invoice_detector, '_query_vlm', return_value=response):
-        with patch.object(invoice_detector, '_parse_extraction_response') as mock_parse:
+    with patch.dict('sys.modules', {'pytesseract': mock_pytesseract}):
+        with patch.object(invoice_detector, '_parse_ocr_text') as mock_parse:
             mock_parse.return_value = {
                 "date": "2024-01-15",
-                "invoicing_party": "ACME_Corporation"
+                "invoicing_party": "Chiropraktik_White"
             }
 
             data = invoice_detector._extract_invoice_data(mock_image)
 
     assert data["date"] == "2024-01-15"
-    assert data["invoicing_party"] == "ACME_Corporation"
+    assert data["invoicing_party"] == "Chiropraktik_White"
+    assert data["extraction_method"] == "OCR (pytesseract)"
 
 
-def test_extract_invoice_data_exception(invoice_detector, mock_image):
-    """Test invoice data extraction with exception."""
-    with patch.object(invoice_detector, '_query_vlm', side_effect=Exception("Extraction error")):
-        data = invoice_detector._extract_invoice_data(mock_image)
+def test_extract_invoice_data_ocr_fallback_to_vlm(invoice_detector, mock_image):
+    """Test invoice data extraction falls back to VLM when OCR not available."""
+    # Simulate pytesseract not being installed by raising ImportError
+    with patch.dict('sys.modules', {'pytesseract': None}):
+        with patch.object(invoice_detector, '_extract_invoice_data_vlm') as mock_vlm_extract:
+            mock_vlm_extract.return_value = {
+                "date": "2024-01-15",
+                "invoicing_party": "ACME_Corp"
+            }
 
-    assert data["date"] == "0000-00-00"
-    assert data["invoicing_party"] == "Unknown"
+            data = invoice_detector._extract_invoice_data(mock_image)
+
+    assert data["date"] == "2024-01-15"
+    assert data["invoicing_party"] == "ACME_Corp"
+    assert data["extraction_method"] == "VLM"
 
 
 def test_query_vlm_success(invoice_detector, mock_image):
@@ -231,7 +242,9 @@ def test_query_vlm_success(invoice_detector, mock_image):
 
 def test_query_vlm_uses_config(invoice_detector, mock_image):
     """Test VLM query uses configuration parameters."""
-    mock_generate = MagicMock(return_value="Response")
+    mock_result = MagicMock()
+    mock_result.text = "Response"
+    mock_generate = MagicMock(return_value=mock_result)
     mock_vlm = MagicMock()
     mock_vlm.generate = mock_generate
     mock_vlm.utils = MagicMock()
@@ -242,7 +255,7 @@ def test_query_vlm_uses_config(invoice_detector, mock_image):
     # Check that generate was called with correct parameters
     call_kwargs = mock_generate.call_args.kwargs
     assert call_kwargs['max_tokens'] == 200
-    assert call_kwargs['temp'] == 0.1
+    assert abs(call_kwargs['temperature'] - 0.1) < 0.001
     assert call_kwargs['verbose'] is False
 
 
@@ -288,7 +301,8 @@ def test_parse_extraction_response_full_format(invoice_detector):
     data = invoice_detector._parse_extraction_response(response)
 
     assert data["date"] == "2024-01-15"
-    assert data["invoicing_party"] == "ACME_Corp"
+    assert data["invoicing_party"] == "ACME Corp"  # Display name with spaces
+    assert data["invoicing_party_filename"] == "ACME_Corp"  # Filename with underscores
 
 
 def test_parse_extraction_response_case_insensitive(invoice_detector):
@@ -298,7 +312,8 @@ def test_parse_extraction_response_case_insensitive(invoice_detector):
     data = invoice_detector._parse_extraction_response(response)
 
     assert data["date"] == "2024-01-15"
-    assert data["invoicing_party"] == "ACME_Corp"
+    assert data["invoicing_party"] == "ACME Corp"  # Display name with spaces
+    assert data["invoicing_party_filename"] == "ACME_Corp"  # Filename with underscores
 
 
 def test_parse_extraction_response_date_only(invoice_detector):
@@ -318,7 +333,8 @@ def test_parse_extraction_response_invalid_date(invoice_detector):
     data = invoice_detector._parse_extraction_response(response)
 
     assert data["date"] == "0000-00-00"  # Should fall back to placeholder
-    assert data["invoicing_party"] == "ACME_Corp"
+    assert data["invoicing_party"] == "ACME Corp"  # Display name with spaces
+    assert data["invoicing_party_filename"] == "ACME_Corp"  # Filename with underscores
 
 
 def test_parse_extraction_response_no_data(invoice_detector):
@@ -332,16 +348,14 @@ def test_parse_extraction_response_no_data(invoice_detector):
 
 
 def test_parse_extraction_response_sanitizes_party(invoice_detector):
-    """Test that party name is sanitized."""
+    """Test that party name is sanitized for filename and cleaned for display."""
     response = "DATE: 2024-01-15\nPARTY: ACME Corp Inc."
 
-    with patch.object(invoice_detector, '_sanitize_filename_part') as mock_sanitize:
-        mock_sanitize.return_value = "ACME_Corp_Inc"
+    data = invoice_detector._parse_extraction_response(response)
 
-        data = invoice_detector._parse_extraction_response(response)
-
-    mock_sanitize.assert_called_once()
-    assert data["invoicing_party"] == "ACME_Corp_Inc"
+    # Display name should have spaces, filename should have underscores
+    assert data["invoicing_party"] == "ACME Corp Inc."  # Display version
+    assert data["invoicing_party_filename"] == "ACME_Corp_Inc."  # Filename version
 
 
 def test_sanitize_filename_part_removes_invalid_chars(invoice_detector):

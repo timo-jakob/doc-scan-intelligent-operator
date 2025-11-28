@@ -6,6 +6,11 @@ from pathlib import Path
 from typing import Dict, Any, Optional
 
 
+# Default model identifiers
+DEFAULT_VLM_MODEL = "Qwen/Qwen2-VL-7B-Instruct"
+DEFAULT_TEXT_LLM_MODEL = "mlx-community/Llama-3.2-3B-Instruct-4bit"
+
+
 def _validate_safe_path(path: Path, must_exist: bool = True) -> Path:
     """
     Validate that a path is safe to use (no path traversal).
@@ -43,7 +48,10 @@ def _validate_safe_path(path: Path, must_exist: bool = True) -> Path:
 
 DEFAULT_CONFIG = {
     # Vision-Language Model for invoice detection
-    "vlm_model": "Qwen/Qwen2-VL-7B-Instruct",  # Default VLM for document analysis
+    "vlm_model": DEFAULT_VLM_MODEL,
+
+    # Text-only LLM for OCR-based analysis (lighter weight alternative)
+    "text_llm_model": DEFAULT_TEXT_LLM_MODEL,
 
     # Model cache directory
     "model_cache_dir": None,  # None = use default (~/.cache/docscan/models)

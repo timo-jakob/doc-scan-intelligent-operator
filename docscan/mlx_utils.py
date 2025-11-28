@@ -25,6 +25,7 @@ def _get_mlx_compatible_architectures() -> list:
         'qwen',
         'qwen2',
         'qwen2_vl',  # VLM
+        'mllama',  # VLM - Llama 3.2 Vision
         'gpt2',
         'gpt_neox',
         'stablelm',
