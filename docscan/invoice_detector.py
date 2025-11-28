@@ -18,6 +18,21 @@ METHOD_TEXT_LLM = "Text LLM"
 METHOD_OCR = "OCR (pytesseract)"
 METHOD_OCR_TEXT_LLM = "OCR + Text LLM"
 
+# Default values for missing invoice data
+DEFAULT_MISSING_DATE = "0000-00-00"
+DEFAULT_MISSING_VALUE = "Unknown"
+
+# Detection and extraction parameters
+MAX_DETECTION_RETRIES = 3
+MIN_RESPONSE_LENGTH = 2
+MIN_COMPANY_NAME_LENGTH = 3
+MAX_COMPANY_NAME_LENGTH = 50
+HEADER_LINE_SCAN_LIMIT = 10
+
+# OCR text length limits
+OCR_DEBUG_PREVIEW_LENGTH = 500
+OCR_TEXT_MAX_LENGTH = 3000
+
 
 class InvoiceDetector:
     """Detects invoices and extracts key information using Vision Language Models or Text LLMs."""
@@ -94,7 +109,8 @@ class InvoiceDetector:
 
             return True, invoice_data
 
-        except Exception as e:
+        except (RuntimeError, OSError, ValueError, ImportError) as e:
+            # Catches image processing errors, file errors, and import errors
             logger.error(f"Failed to analyze document: {e}")
             return False, None
 
@@ -112,15 +128,15 @@ class InvoiceDetector:
 
 Answer only with INVOICE if this is an invoice/bill/Rechnung/Liquidation, or OTHER if it is not."""
 
-        # Retry up to 3 times for empty responses
-        max_retries = 3
+        # Retry up to MAX_DETECTION_RETRIES times for empty responses
+        max_retries = MAX_DETECTION_RETRIES
         for attempt in range(max_retries):
             try:
                 response = self._query_vlm(image, prompt)
                 response_clean = response.strip().upper()
 
                 # If response is empty or too short, retry
-                if len(response_clean) < 2 and attempt < max_retries - 1:
+                if len(response_clean) < MIN_RESPONSE_LENGTH and attempt < max_retries - 1:
                     logger.debug(f"Empty response on attempt {attempt + 1}, retrying...")
                     continue
 
@@ -130,7 +146,8 @@ Answer only with INVOICE if this is an invoice/bill/Rechnung/Liquidation, or OTH
                 logger.debug(f"Invoice detection response: {response} -> {is_invoice}")
                 return is_invoice
 
-            except Exception as e:
+            except (RuntimeError, ValueError, ImportError) as e:
+                # Catches MLX/VLM errors, image processing errors
                 logger.error(f"Invoice detection failed: {e}")
                 if attempt < max_retries - 1:
                     continue
@@ -154,7 +171,7 @@ Answer only with INVOICE if this is an invoice/bill/Rechnung/Liquidation, or OTH
             
             # Extract text from image
             ocr_text = pytesseract.image_to_string(image)
-            logger.debug(f"OCR extracted text (first 500 chars): {ocr_text[:500]}")
+            logger.debug(f"OCR extracted text (first 500 chars): {ocr_text[:OCR_DEBUG_PREVIEW_LENGTH]}")
             
             # Parse the OCR text to extract invoice data
             invoice_data = self._parse_ocr_text(ocr_text)
@@ -167,11 +184,11 @@ Answer only with INVOICE if this is an invoice/bill/Rechnung/Liquidation, or OTH
             data = self._extract_invoice_data_vlm(image)
             data["extraction_method"] = METHOD_VLM
             return data
-        except Exception as e:
+        except (RuntimeError, OSError, ValueError) as e:
+            # Catches pytesseract.TesseractError (subclass of RuntimeError), file errors, and value errors
             logger.error(f"OCR extraction failed: {e}, falling back to VLM")
             data = self._extract_invoice_data_vlm(image)
             data["extraction_method"] = METHOD_VLM
-            return data
             return data
 
     def _parse_ocr_text(self, text: str) -> Dict[str, str]:
@@ -185,9 +202,9 @@ Answer only with INVOICE if this is an invoice/bill/Rechnung/Liquidation, or OTH
             Dictionary with date and invoicing_party
         """
         data = {
-            "date": "0000-00-00",
-            "invoicing_party": "Unknown",
-            "invoicing_party_filename": "Unknown"
+            "date": DEFAULT_MISSING_DATE,
+            "invoicing_party": DEFAULT_MISSING_VALUE,
+            "invoicing_party_filename": DEFAULT_MISSING_VALUE
         }
         
         # Extract date
@@ -215,7 +232,7 @@ Answer only with INVOICE if this is an invoice/bill/Rechnung/Liquidation, or OTH
             if match:
                 return self._convert_date_to_iso(match.group(1))
         
-        return "0000-00-00"
+        return DEFAULT_MISSING_DATE
 
     def _extract_company_from_text(self, text: str) -> Tuple[str, str]:
         """Extract issuing company name from OCR text.
@@ -256,7 +273,7 @@ Answer only with INVOICE if this is an invoice/bill/Rechnung/Liquidation, or OTH
                     company = match.group(1).strip()
                     # Fixed: Use negated character class to prevent ReDoS vulnerability
                     company = re.sub(r'\s+(Kontakt|Bank|Telefon|Fax|IBAN)[^\n]*$', '', company, flags=re.IGNORECASE)
-                    if len(company) >= 3:
+                    if len(company) >= MIN_COMPANY_NAME_LENGTH:
                         return (self._clean_display_name(company), 
                                 self._sanitize_filename_part(company))
         return None
@@ -279,7 +296,7 @@ Answer only with INVOICE if this is an invoice/bill/Rechnung/Liquidation, or OTH
                 match = re.search(pattern, line.strip(), re.IGNORECASE)
                 if match:
                     company = match.group(1).strip()
-                    if len(company) >= 3:
+                    if len(company) >= MIN_COMPANY_NAME_LENGTH:
                         return (self._clean_display_name(company),
                                 self._sanitize_filename_part(company))
         return None
@@ -290,12 +307,12 @@ Answer only with INVOICE if this is an invoice/bill/Rechnung/Liquidation, or OTH
         Returns:
             Tuple of (display_name, filename_safe_name)
         """
-        for line in lines[:10]:
+        for line in lines[:HEADER_LINE_SCAN_LIMIT]:
             if self._is_potential_company_line(line):
-                company = line.strip()[:50]
+                company = line.strip()[:MAX_COMPANY_NAME_LENGTH]
                 return (self._clean_display_name(company),
                         self._sanitize_filename_part(company))
-        return ("Unknown", "Unknown")
+        return (DEFAULT_MISSING_VALUE, DEFAULT_MISSING_VALUE)
 
     def _analyze_with_text_llm(self, image: Image.Image) -> Tuple[bool, Optional[Dict[str, str]]]:
         """
@@ -312,7 +329,7 @@ Answer only with INVOICE if this is an invoice/bill/Rechnung/Liquidation, or OTH
 
             # Extract text using OCR
             ocr_text = pytesseract.image_to_string(image)
-            logger.debug(f"OCR extracted text (first 500 chars): {ocr_text[:500]}")
+            logger.debug(f"OCR extracted text (first 500 chars): {ocr_text[:OCR_DEBUG_PREVIEW_LENGTH]}")
 
             if not ocr_text.strip():
                 logger.warning("OCR extracted no text from image")
@@ -325,14 +342,14 @@ Answer only with INVOICE if this is an invoice/bill/Rechnung/Liquidation, or OTH
                 return False, None
 
             # If LLM extraction failed, fall back to regex parsing
-            if llm_data.get("date") == "0000-00-00" or llm_data.get("invoicing_party") == "Unknown":
+            if llm_data.get("date") == DEFAULT_MISSING_DATE or llm_data.get("invoicing_party") == DEFAULT_MISSING_VALUE:
                 logger.debug("LLM extraction incomplete, supplementing with regex")
                 regex_data = self._parse_ocr_text(ocr_text)
-                if llm_data.get("date") == "0000-00-00":
+                if llm_data.get("date") == DEFAULT_MISSING_DATE:
                     llm_data["date"] = regex_data["date"]
-                if llm_data.get("invoicing_party") == "Unknown":
+                if llm_data.get("invoicing_party") == DEFAULT_MISSING_VALUE:
                     llm_data["invoicing_party"] = regex_data["invoicing_party"]
-                    llm_data["invoicing_party_filename"] = regex_data.get("invoicing_party_filename", "Unknown")
+                    llm_data["invoicing_party_filename"] = regex_data.get("invoicing_party_filename", DEFAULT_MISSING_VALUE)
 
             llm_data["detection_method"] = METHOD_TEXT_LLM
             llm_data["extraction_method"] = METHOD_OCR_TEXT_LLM
@@ -342,7 +359,7 @@ Answer only with INVOICE if this is an invoice/bill/Rechnung/Liquidation, or OTH
         except ImportError:
             logger.error("pytesseract not available for text LLM mode")
             return False, None
-        except Exception as e:
+        except (RuntimeError, ValueError, OSError, TypeError, KeyError) as e:
             logger.error(f"Text LLM analysis failed: {e}")
             return False, None
 
@@ -372,7 +389,7 @@ Answer only with INVOICE if this is an invoice/bill/Rechnung/Liquidation, or OTH
             "- Common patterns: 'Praxis [Name]', 'Chiropraktik [Name]', '[Name] GmbH'\n"
             "- The issuer is usually in the letterhead or return address, NOT the recipient\n"
             "- Ignore academic titles (Dr., D.C.) and university names\n\n"
-            f"Text:\n\"\"\"\n{ocr_text[:3000]}\n\"\"\"\n\n"
+            f"Text:\n\"\"\"\n{ocr_text[:OCR_TEXT_MAX_LENGTH]}\n\"\"\"\n\n"
             "Answer ONLY in this format:\n"
             "INVOICE: YES or NO\n"
             "DATE: YYYY-MM-DD\n"
@@ -387,9 +404,9 @@ Answer only with INVOICE if this is an invoice/bill/Rechnung/Liquidation, or OTH
             is_invoice = "INVOICE: YES" in response.upper() or "INVOICE:YES" in response.upper()
 
             data = {
-                "date": "0000-00-00",
-                "invoicing_party": "Unknown",
-                "invoicing_party_filename": "Unknown"
+                "date": DEFAULT_MISSING_DATE,
+                "invoicing_party": DEFAULT_MISSING_VALUE,
+                "invoicing_party_filename": DEFAULT_MISSING_VALUE
             }
 
             # Extract date
@@ -407,9 +424,9 @@ Answer only with INVOICE if this is an invoice/bill/Rechnung/Liquidation, or OTH
 
             return is_invoice, data
 
-        except Exception as e:
+        except (RuntimeError, ValueError, OSError, ImportError, TypeError, KeyError) as e:
             logger.error(f"Text LLM query failed: {e}")
-            return False, {"date": "0000-00-00", "invoicing_party": "Unknown", "invoicing_party_filename": "Unknown"}
+            return False, {"date": DEFAULT_MISSING_DATE, "invoicing_party": DEFAULT_MISSING_VALUE, "invoicing_party_filename": DEFAULT_MISSING_VALUE}
 
     def _query_text_llm(self, system_message: str, user_message: str) -> str:
         """
@@ -452,7 +469,7 @@ Answer only with INVOICE if this is an invoice/bill/Rechnung/Liquidation, or OTH
 
             return response
 
-        except Exception as e:
+        except (RuntimeError, ValueError, OSError, ImportError, TypeError, KeyError) as e:
             logger.error(f"Text LLM query failed: {e}")
             raise
 
@@ -485,7 +502,7 @@ Answer only with INVOICE if this is an invoice/bill/Rechnung/Liquidation, or OTH
                 tokenize=False,
                 add_generation_prompt=True
             )
-        except Exception as e:
+        except (RuntimeError, ValueError, OSError, ImportError, TypeError, KeyError) as e:
             logger.debug(f"Chat template with system message failed: {e}")
         
         # Fallback: embed system message in user message (Mistral style)
@@ -500,7 +517,7 @@ Answer only with INVOICE if this is an invoice/bill/Rechnung/Liquidation, or OTH
                 tokenize=False,
                 add_generation_prompt=True
             )
-        except Exception as e:
+        except (RuntimeError, ValueError, OSError, ImportError, TypeError, KeyError) as e:
             logger.warning(f"Chat template failed: {e}, using plain format")
             return f"System: {system_message}\n\nUser: {user_message}\n\nAssistant:"
 
@@ -541,7 +558,7 @@ Answer only with INVOICE if this is an invoice/bill/Rechnung/Liquidation, or OTH
                 continue
         
         logger.warning(f"Could not parse date: {date_str}")
-        return "0000-00-00"
+        return DEFAULT_MISSING_DATE
 
     def _extract_invoice_data_vlm(self, image: Image.Image) -> Dict[str, str]:
         """
@@ -574,12 +591,12 @@ PARTY: [exact company name as written on the invoice]"""
 
             return invoice_data
 
-        except Exception as e:
+        except (RuntimeError, ValueError, OSError, ImportError, TypeError, KeyError) as e:
             logger.error(f"Failed to extract invoice data: {e}")
             return {
-                "date": "0000-00-00",
-                "invoicing_party": "Unknown",
-                "invoicing_party_filename": "Unknown"
+                "date": DEFAULT_MISSING_DATE,
+                "invoicing_party": DEFAULT_MISSING_VALUE,
+                "invoicing_party_filename": DEFAULT_MISSING_VALUE
             }
 
     def _query_vlm(self, image: Image.Image, prompt: str) -> str:
@@ -635,7 +652,7 @@ PARTY: [exact company name as written on the invoice]"""
             logger.error("mlx_vlm not available, using placeholder")
             return "YES\nDATE: 2024-01-01\nPARTY: Placeholder Company"
 
-        except Exception as e:
+        except (RuntimeError, ValueError, OSError, TypeError, KeyError) as e:
             logger.error(f"VLM query failed: {e}")
             raise
 
@@ -650,9 +667,9 @@ PARTY: [exact company name as written on the invoice]"""
             Dictionary with date and invoicing_party
         """
         data = {
-            "date": "0000-00-00",
-            "invoicing_party": "Unknown",
-            "invoicing_party_filename": "Unknown"
+            "date": DEFAULT_MISSING_DATE,
+            "invoicing_party": DEFAULT_MISSING_VALUE,
+            "invoicing_party_filename": DEFAULT_MISSING_VALUE
         }
 
         # Extract date
@@ -678,7 +695,7 @@ PARTY: [exact company name as written on the invoice]"""
             datetime.strptime(data["date"], "%Y-%m-%d")
         except ValueError:
             logger.warning(f"Invalid date format: {data['date']}, using placeholder")
-            data["date"] = "0000-00-00"
+            data["date"] = DEFAULT_MISSING_DATE
 
         return data
 
@@ -705,7 +722,7 @@ PARTY: [exact company name as written on the invoice]"""
         if len(text) > 50:
             text = text[:50]
 
-        return text or "Unknown"
+        return text or DEFAULT_MISSING_VALUE
 
     def _sanitize_filename_part(self, text: str) -> str:
         """
@@ -727,7 +744,7 @@ PARTY: [exact company name as written on the invoice]"""
         # Remove leading/trailing underscores
         text = text.strip('_')
 
-        return text or "Unknown"
+        return text or DEFAULT_MISSING_VALUE
 
 
 def generate_invoice_filename(invoice_data: Dict[str, str]) -> str:
@@ -742,12 +759,12 @@ def generate_invoice_filename(invoice_data: Dict[str, str]) -> str:
     Returns:
         Generated filename
     """
-    date = invoice_data.get("date", "0000-00-00")
+    date = invoice_data.get("date", DEFAULT_MISSING_DATE)
     # Use filename-safe version if available, otherwise sanitize the display version
     party = invoice_data.get("invoicing_party_filename")
     if not party:
         # Fallback: sanitize the display name
-        display_party = invoice_data.get("invoicing_party", "Unknown")
+        display_party = invoice_data.get("invoicing_party", DEFAULT_MISSING_VALUE)
         party = re.sub(r'\s+', '_', display_party)
 
     # Format: date_Rechnung_party.pdf

@@ -144,3 +144,65 @@ def test_check_disk_space_unknown_size(tmp_path):
         # Should allow when size cannot be estimated
         assert has_space is True
         assert "Could not estimate" in message
+
+
+def test_check_mlx_compatibility_import_error():
+    """Test MLX compatibility check when huggingface_hub not installed."""
+    with patch.dict('sys.modules', {'huggingface_hub': None}):
+        is_compatible, reason = check_mlx_compatibility("test/model")
+        assert is_compatible is False
+        assert "huggingface_hub" in reason
+
+
+@patch("huggingface_hub.model_info")
+def test_check_mlx_compatibility_api_error(mock_model_info):
+    """Test MLX compatibility check with API error."""
+    mock_model_info.side_effect = ConnectionError("Network error")
+
+    is_compatible, reason = check_mlx_compatibility("test/model")
+    # Should return True when check fails (assume compatible)
+    assert is_compatible is True
+    assert reason is None
+
+
+@patch("huggingface_hub.model_info")
+def test_estimate_model_size_from_num_parameters(mock_model_info):
+    """Test model size estimation from num_parameters in config."""
+    mock_info = MagicMock()
+    mock_info.siblings = []
+    mock_info.config = {"num_parameters": 1000000000}  # 1B parameters
+    mock_model_info.return_value = mock_info
+
+    size = estimate_model_size("test/model")
+    assert size is not None
+    assert size > 0
+    # Should be approximately 2.5 bytes per parameter
+    expected = 1000000000 * 2.5
+    assert abs(size - expected) < expected * 0.1
+
+
+@patch("huggingface_hub.model_info")
+def test_estimate_model_size_api_error(mock_model_info):
+    """Test model size estimation with API error."""
+    mock_model_info.side_effect = RuntimeError("API error")
+
+    size = estimate_model_size("test/model")
+    assert size is None
+
+
+def test_check_disk_space_permission_error(tmp_path):
+    """Test disk space check when cache directory cannot be created."""
+    cache_dir = tmp_path / "readonly" / "cache"
+
+    # Make parent directory read-only
+    readonly_dir = tmp_path / "readonly"
+    readonly_dir.mkdir()
+    readonly_dir.chmod(0o444)  # Read-only
+
+    try:
+        has_space, message = check_disk_space_for_model("test/model", cache_dir)
+        assert has_space is False
+        assert "Cannot create cache directory" in message
+    finally:
+        # Restore permissions for cleanup
+        readonly_dir.chmod(0o755)

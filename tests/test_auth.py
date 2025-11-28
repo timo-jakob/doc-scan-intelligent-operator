@@ -84,3 +84,37 @@ def test_login_without_token(monkeypatch):
     with patch("pathlib.Path.home", return_value=Path("/nonexistent")):
         result = login_to_huggingface()
         assert result is False
+
+
+def test_get_token_from_file_permission_error(tmp_path, monkeypatch):
+    """Test handling permission error when reading token file."""
+    monkeypatch.delenv("HF_TOKEN", raising=False)
+    monkeypatch.delenv("HUGGING_FACE_TOKEN", raising=False)
+
+    # Create token file
+    token_file = tmp_path / ".huggingface" / "token"
+    token_file.parent.mkdir(parents=True)
+    token_file.write_text("test_token")
+
+    # Mock the read_text to raise PermissionError
+    with patch("pathlib.Path.home", return_value=tmp_path):
+        with patch("pathlib.Path.read_text", side_effect=PermissionError("Access denied")):
+            token = get_huggingface_token()
+            assert token is None
+
+
+def test_login_import_error():
+    """Test login fails gracefully when huggingface_hub not installed."""
+    with patch.dict('sys.modules', {'huggingface_hub': None}):
+        with patch("docscan.auth.get_huggingface_token", return_value="test_token"):
+            result = login_to_huggingface()
+            assert result is False
+
+
+@patch("huggingface_hub.login")
+def test_login_general_exception(mock_login):
+    """Test login handles general exceptions during login."""
+    mock_login.side_effect = RuntimeError("Login failed")
+
+    result = login_to_huggingface(token="test_token")
+    assert result is False

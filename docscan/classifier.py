@@ -46,7 +46,8 @@ class DocumentClassifier:
         try:
             self.model, self.tokenizer = self.model_manager.load_model(self.model_id)
             logger.info(f"Model {self.model_id} loaded successfully")
-        except Exception as e:
+        except (ImportError, RuntimeError, OSError, ValueError) as e:
+            # Catches model loading errors, MLX errors, file errors
             logger.error(f"Failed to load model: {e}")
             raise
 
@@ -172,7 +173,8 @@ Category:"""
 
             return category
 
-        except Exception as e:
+        except (RuntimeError, ValueError, TypeError, KeyError) as e:
+            # Catches model inference errors, tokenization errors, and data access errors
             logger.error(f"Inference failed: {e}")
             return "other"
 

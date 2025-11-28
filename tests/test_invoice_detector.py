@@ -134,7 +134,7 @@ def test_analyze_document_exception(invoice_detector, tmp_path):
     pdf_path.touch()
 
     with patch('docscan.invoice_detector.is_valid_pdf', return_value=True):
-        with patch('docscan.invoice_detector.pdf_to_images', side_effect=Exception("PDF error")):
+        with patch('docscan.invoice_detector.pdf_to_images', side_effect=RuntimeError("PDF error")):
             is_invoice, data = invoice_detector.analyze_document(pdf_path)
 
     assert is_invoice is False
@@ -184,7 +184,7 @@ def test_detect_invoice_with_extra_text(invoice_detector, mock_image):
 
 def test_detect_invoice_exception(invoice_detector, mock_image):
     """Test invoice detection with exception."""
-    with patch.object(invoice_detector, '_query_vlm', side_effect=Exception("VLM error")):
+    with patch.object(invoice_detector, '_query_vlm', side_effect=RuntimeError("VLM error")):
         result = invoice_detector._detect_invoice(mock_image)
 
     assert result is False
@@ -612,7 +612,7 @@ def test_build_chat_prompt_fallback(mock_model, mock_tokenizer, config):
     detector = InvoiceDetector(mock_model, mock_tokenizer, config, use_text_llm=True)
 
     mock_tok = MagicMock()
-    mock_tok.apply_chat_template = MagicMock(side_effect=Exception("No template"))
+    mock_tok.apply_chat_template = MagicMock(side_effect=RuntimeError("No template"))
 
     prompt = detector._build_chat_prompt(mock_tok, "System message", "User message")
 
