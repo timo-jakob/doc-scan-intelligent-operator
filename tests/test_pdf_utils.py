@@ -94,7 +94,7 @@ def test_pdf_to_images_invalid_pdf(tmp_path):
     pdf_path.touch()
 
     mock_fitz = MagicMock()
-    mock_fitz.open.side_effect = Exception("Invalid PDF")
+    mock_fitz.open.side_effect = RuntimeError("Invalid PDF")
 
     with patch.dict('sys.modules', {'fitz': mock_fitz}):
         with pytest.raises(ValueError, match="Failed to convert"):
@@ -125,7 +125,7 @@ def test_get_pdf_page_count_error(tmp_path):
     pdf_path.touch()
 
     mock_fitz = MagicMock()
-    mock_fitz.open.side_effect = Exception("Cannot open")
+    mock_fitz.open.side_effect = RuntimeError("Cannot open")
 
     with patch.dict('sys.modules', {'fitz': mock_fitz}):
         count = get_pdf_page_count(pdf_path)

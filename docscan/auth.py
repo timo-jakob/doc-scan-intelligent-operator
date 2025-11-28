@@ -46,7 +46,7 @@ def get_huggingface_token() -> Optional[str]:
                 if token:
                     logger.info(f"Using HuggingFace token from {token_path}")
                     return token
-            except Exception as e:
+            except (OSError, PermissionError, UnicodeDecodeError) as e:
                 logger.warning(f"Failed to read token from {token_path}: {e}")
 
     logger.debug("No HuggingFace token found")

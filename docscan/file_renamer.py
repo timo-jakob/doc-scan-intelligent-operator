@@ -5,42 +5,15 @@ import shutil
 from pathlib import Path
 from typing import Optional
 
+from docscan.path_utils import validate_safe_path
+
 logger = logging.getLogger(__name__)
-
-
-def _validate_safe_path(path: Path, must_exist: bool = True) -> Path:
-    """
-    Validate that a path is safe to use (no path traversal).
-    
-    Args:
-        path: Path to validate
-        must_exist: Whether the path must exist
-        
-    Returns:
-        Resolved absolute path
-        
-    Raises:
-        ValueError: If path is unsafe
-        FileNotFoundError: If path doesn't exist and must_exist is True
-    """
-    # Convert to Path object and resolve to absolute path
-    resolved_path = Path(path).resolve()
-    
-    # Check for null bytes (path traversal attack vector)
-    if '\0' in str(path):
-        raise ValueError("Path contains null bytes")
-    
-    # Verify path exists if required
-    if must_exist and not resolved_path.exists():
-        raise FileNotFoundError(f"Path does not exist: {resolved_path}")
-    
-    return resolved_path
 
 
 def _validate_original_path(original_path: Path) -> Optional[Path]:
     """Validate and return the original file path."""
     try:
-        validated_path = _validate_safe_path(original_path, must_exist=True)
+        validated_path = validate_safe_path(original_path, must_exist=True)
     except (ValueError, FileNotFoundError) as e:
         logger.error(f"Invalid original path: {e}")
         return None
@@ -65,7 +38,7 @@ def _get_target_directory(output_dir: Optional[Path], original_path: Path) -> Op
     """Determine and validate the target directory."""
     if output_dir:
         try:
-            target_dir = _validate_safe_path(output_dir, must_exist=False)
+            target_dir = validate_safe_path(output_dir, must_exist=False)
             target_dir.mkdir(parents=True, exist_ok=True)
             return target_dir
         except ValueError as e:
@@ -109,7 +82,7 @@ def _perform_rename(original_path: Path, new_path: Path, target_dir: Path) -> bo
             original_path.rename(new_path)
             logger.info(f"Renamed file:\n  From: {original_path.name}\n  To: {new_path.name}")
         return True
-    except Exception as e:
+    except (OSError, PermissionError, shutil.Error) as e:
         logger.error(f"Failed to rename file: {e}")
         return False
 

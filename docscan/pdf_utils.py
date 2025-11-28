@@ -8,8 +8,12 @@ import io
 
 logger = logging.getLogger(__name__)
 
+# PDF rendering constants
+DEFAULT_PDF_DPI = 150  # Good balance between quality and performance
+PDF_BASE_DPI = 72  # PDF standard DPI
 
-def pdf_to_images(pdf_path: Path, dpi: int = 150) -> List[Image.Image]:
+
+def pdf_to_images(pdf_path: Path, dpi: int = DEFAULT_PDF_DPI) -> List[Image.Image]:
     """
     Convert PDF pages to PIL Images.
 
@@ -38,8 +42,8 @@ def pdf_to_images(pdf_path: Path, dpi: int = 150) -> List[Image.Image]:
             page = doc[page_num]
 
             # Render page to pixmap with specified DPI
-            # Calculate zoom factor: 72 DPI is default, so zoom = target_dpi / 72
-            zoom = dpi / 72
+            # Calculate zoom factor: PDF_BASE_DPI is default, so zoom = target_dpi / PDF_BASE_DPI
+            zoom = dpi / PDF_BASE_DPI
             mat = fitz.Matrix(zoom, zoom)
             pix = page.get_pixmap(matrix=mat)
 
@@ -60,7 +64,8 @@ def pdf_to_images(pdf_path: Path, dpi: int = 150) -> List[Image.Image]:
             "PyMuPDF (fitz) is required for PDF processing. "
             "Install with: pip install PyMuPDF"
         ) from e
-    except Exception as e:
+    except (OSError, RuntimeError, ValueError) as e:
+        # Catches fitz.FileDataError (subclass of RuntimeError), file errors, and value errors
         raise ValueError(f"Failed to convert PDF to images: {e}") from e
 
 
@@ -82,7 +87,8 @@ def get_pdf_page_count(pdf_path: Path) -> int:
         doc.close()
         return count
 
-    except Exception as e:
+    except (OSError, RuntimeError, ValueError) as e:
+        # Catches fitz.FileDataError (subclass of RuntimeError), file errors, and value errors
         logger.error(f"Failed to get page count: {e}")
         return 0
 
