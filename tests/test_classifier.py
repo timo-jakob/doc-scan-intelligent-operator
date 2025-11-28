@@ -274,7 +274,7 @@ def test_infer_category_exception(config, mock_model_manager):
     """Test inference with exception."""
     classifier = DocumentClassifier(config)
 
-    mock_generate = MagicMock(side_effect=Exception("Inference error"))
+    mock_generate = MagicMock(side_effect=RuntimeError("Inference error"))
     mock_mlx_lm = MagicMock()
     mock_mlx_lm.generate = mock_generate
 

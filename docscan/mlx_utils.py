@@ -80,7 +80,8 @@ def check_mlx_compatibility(model_id: str, is_vlm: bool = False) -> Tuple[bool, 
     except ImportError:
         logger.error("huggingface_hub not installed")
         return False, "huggingface_hub package not installed"
-    except Exception as e:
+    except (OSError, ValueError, ConnectionError, RuntimeError) as e:
+        # Catches file errors, API errors, network errors, and HF hub errors
         logger.warning(f"Could not verify MLX compatibility for {model_id}: {e}")
         # If we can't check, assume it might work
         return True, None
@@ -132,7 +133,8 @@ def estimate_model_size(model_id: str) -> Optional[int]:
         logger.warning(f"Could not estimate size for {model_id}")
         return None
 
-    except Exception as e:
+    except (OSError, ValueError, ConnectionError, RuntimeError) as e:
+        # Catches file errors, API errors, network errors, and parsing errors
         logger.warning(f"Failed to estimate model size: {e}")
         return None
 
@@ -188,7 +190,7 @@ def check_disk_space_for_model(model_id: str, cache_dir: Path) -> Tuple[bool, st
     # Ensure cache directory exists or can be created
     try:
         cache_dir.mkdir(parents=True, exist_ok=True)
-    except Exception as e:
+    except (OSError, PermissionError) as e:
         return False, f"Cannot create cache directory {cache_dir}: {e}"
 
     available_space = get_available_disk_space(cache_dir)

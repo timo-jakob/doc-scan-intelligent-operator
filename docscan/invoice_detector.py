@@ -109,7 +109,8 @@ class InvoiceDetector:
 
             return True, invoice_data
 
-        except Exception as e:
+        except (RuntimeError, OSError, ValueError, ImportError) as e:
+            # Catches image processing errors, file errors, and import errors
             logger.error(f"Failed to analyze document: {e}")
             return False, None
 
@@ -145,7 +146,8 @@ Answer only with INVOICE if this is an invoice/bill/Rechnung/Liquidation, or OTH
                 logger.debug(f"Invoice detection response: {response} -> {is_invoice}")
                 return is_invoice
 
-            except Exception as e:
+            except (RuntimeError, ValueError, ImportError) as e:
+                # Catches MLX/VLM errors, image processing errors
                 logger.error(f"Invoice detection failed: {e}")
                 if attempt < max_retries - 1:
                     continue
@@ -357,7 +359,7 @@ Answer only with INVOICE if this is an invoice/bill/Rechnung/Liquidation, or OTH
         except ImportError:
             logger.error("pytesseract not available for text LLM mode")
             return False, None
-        except Exception as e:
+        except (RuntimeError, ValueError, OSError, ImportError, TypeError, KeyError) as e:
             logger.error(f"Text LLM analysis failed: {e}")
             return False, None
 
@@ -422,7 +424,7 @@ Answer only with INVOICE if this is an invoice/bill/Rechnung/Liquidation, or OTH
 
             return is_invoice, data
 
-        except Exception as e:
+        except (RuntimeError, ValueError, OSError, ImportError, TypeError, KeyError) as e:
             logger.error(f"Text LLM query failed: {e}")
             return False, {"date": DEFAULT_MISSING_DATE, "invoicing_party": DEFAULT_MISSING_VALUE, "invoicing_party_filename": DEFAULT_MISSING_VALUE}
 
@@ -467,7 +469,7 @@ Answer only with INVOICE if this is an invoice/bill/Rechnung/Liquidation, or OTH
 
             return response
 
-        except Exception as e:
+        except (RuntimeError, ValueError, OSError, ImportError, TypeError, KeyError) as e:
             logger.error(f"Text LLM query failed: {e}")
             raise
 
@@ -500,7 +502,7 @@ Answer only with INVOICE if this is an invoice/bill/Rechnung/Liquidation, or OTH
                 tokenize=False,
                 add_generation_prompt=True
             )
-        except Exception as e:
+        except (RuntimeError, ValueError, OSError, ImportError, TypeError, KeyError) as e:
             logger.debug(f"Chat template with system message failed: {e}")
         
         # Fallback: embed system message in user message (Mistral style)
@@ -515,7 +517,7 @@ Answer only with INVOICE if this is an invoice/bill/Rechnung/Liquidation, or OTH
                 tokenize=False,
                 add_generation_prompt=True
             )
-        except Exception as e:
+        except (RuntimeError, ValueError, OSError, ImportError, TypeError, KeyError) as e:
             logger.warning(f"Chat template failed: {e}, using plain format")
             return f"System: {system_message}\n\nUser: {user_message}\n\nAssistant:"
 
@@ -589,7 +591,7 @@ PARTY: [exact company name as written on the invoice]"""
 
             return invoice_data
 
-        except Exception as e:
+        except (RuntimeError, ValueError, OSError, ImportError, TypeError, KeyError) as e:
             logger.error(f"Failed to extract invoice data: {e}")
             return {
                 "date": DEFAULT_MISSING_DATE,
@@ -650,7 +652,7 @@ PARTY: [exact company name as written on the invoice]"""
             logger.error("mlx_vlm not available, using placeholder")
             return "YES\nDATE: 2024-01-01\nPARTY: Placeholder Company"
 
-        except Exception as e:
+        except (RuntimeError, ValueError, OSError, ImportError, TypeError, KeyError) as e:
             logger.error(f"VLM query failed: {e}")
             raise
 

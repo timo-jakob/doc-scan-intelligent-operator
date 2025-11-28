@@ -97,7 +97,8 @@ class ModelManager:
 
             return model, processor
 
-        except Exception as e:
+        except (ImportError, RuntimeError, OSError, ValueError) as e:
+            # Catches import errors, MLX errors, file errors, model loading errors
             logger.error(f"Failed to load model {model_id}: {e}")
             raise RuntimeError(f"Failed to load model {model_id}: {e}")
 
@@ -129,7 +130,8 @@ class ModelManager:
             raise RuntimeError(
                 "MLX packages not installed. Please install: pip install mlx mlx-lm"
             ) from e
-        except Exception as e:
+        except (OSError, ValueError, RuntimeError) as e:
+            # Catches file errors, model format errors, and MLX runtime errors
             raise RuntimeError(f"Failed to load MLX model: {e}") from e
 
     def _load_mlx_vlm(self, model_id: str) -> Tuple[Any, Any]:
@@ -160,7 +162,8 @@ class ModelManager:
             raise RuntimeError(
                 "MLX VLM packages not installed. Please install: pip install mlx mlx-vlm"
             ) from e
-        except Exception as e:
+        except (OSError, ValueError, RuntimeError) as e:
+            # Catches file errors, model format errors, and MLX runtime errors
             raise RuntimeError(f"Failed to load MLX VLM: {e}") from e
 
     def _save_model_metadata(self, model_id: str) -> None:
@@ -191,7 +194,8 @@ class ModelManager:
             with open(metadata_file, 'w') as f:
                 json.dump(metadata, f, indent=2)
 
-        except Exception as e:
+        except (OSError, PermissionError, json.JSONDecodeError) as e:
+            # Catches file write errors and JSON errors
             logger.warning(f"Failed to save model metadata: {e}")
 
     def get_cached_models(self) -> list:
@@ -210,7 +214,7 @@ class ModelManager:
             with open(metadata_file, 'r') as f:
                 metadata = json.load(f)
             return list(metadata.keys())
-        except Exception as e:
+        except (OSError, PermissionError, json.JSONDecodeError) as e:
             logger.warning(f"Failed to read model metadata: {e}")
             return []
 
