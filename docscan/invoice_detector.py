@@ -359,7 +359,7 @@ Answer only with INVOICE if this is an invoice/bill/Rechnung/Liquidation, or OTH
         except ImportError:
             logger.error("pytesseract not available for text LLM mode")
             return False, None
-        except (RuntimeError, ValueError, OSError, ImportError, TypeError, KeyError) as e:
+        except (RuntimeError, ValueError, OSError, TypeError, KeyError) as e:
             logger.error(f"Text LLM analysis failed: {e}")
             return False, None
 
@@ -652,7 +652,7 @@ PARTY: [exact company name as written on the invoice]"""
             logger.error("mlx_vlm not available, using placeholder")
             return "YES\nDATE: 2024-01-01\nPARTY: Placeholder Company"
 
-        except (RuntimeError, ValueError, OSError, ImportError, TypeError, KeyError) as e:
+        except (RuntimeError, ValueError, OSError, TypeError, KeyError) as e:
             logger.error(f"VLM query failed: {e}")
             raise
 

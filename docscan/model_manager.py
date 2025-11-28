@@ -194,7 +194,7 @@ class ModelManager:
             with open(metadata_file, 'w') as f:
                 json.dump(metadata, f, indent=2)
 
-        except (OSError, PermissionError, json.JSONDecodeError) as e:
+        except (OSError, json.JSONDecodeError) as e:
             # Catches file write errors and JSON errors
             logger.warning(f"Failed to save model metadata: {e}")
 
@@ -214,7 +214,7 @@ class ModelManager:
             with open(metadata_file, 'r') as f:
                 metadata = json.load(f)
             return list(metadata.keys())
-        except (OSError, PermissionError, json.JSONDecodeError) as e:
+        except (OSError, json.JSONDecodeError) as e:
             logger.warning(f"Failed to read model metadata: {e}")
             return []
 

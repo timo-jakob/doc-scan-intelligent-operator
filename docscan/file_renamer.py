@@ -82,7 +82,7 @@ def _perform_rename(original_path: Path, new_path: Path, target_dir: Path) -> bo
             original_path.rename(new_path)
             logger.info(f"Renamed file:\n  From: {original_path.name}\n  To: {new_path.name}")
         return True
-    except (OSError, PermissionError, shutil.Error) as e:
+    except (OSError, shutil.Error) as e:
         logger.error(f"Failed to rename file: {e}")
         return False
 
