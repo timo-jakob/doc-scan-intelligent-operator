@@ -254,7 +254,8 @@ Answer only with INVOICE if this is an invoice/bill/Rechnung/Liquidation, or OTH
                 match = re.search(pattern, line, re.IGNORECASE)
                 if match:
                     company = match.group(1).strip()
-                    company = re.sub(r'\s+(Kontakt|Bank|Telefon|Fax|IBAN).*$', '', company, flags=re.IGNORECASE)
+                    # Fixed: Use negated character class to prevent ReDoS vulnerability
+                    company = re.sub(r'\s+(Kontakt|Bank|Telefon|Fax|IBAN)[^\n]*$', '', company, flags=re.IGNORECASE)
                     if len(company) >= 3:
                         return (self._clean_display_name(company), 
                                 self._sanitize_filename_part(company))
