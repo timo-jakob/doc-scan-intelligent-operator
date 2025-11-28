@@ -192,14 +192,18 @@ def test_load_mlx_model_import_error(tmp_path):
             manager._load_mlx_model("test/model")
 
 
-@patch("mlx_lm.load")
-def test_load_mlx_model_loading_error(mock_load, tmp_path):
+def test_load_mlx_model_loading_error(tmp_path):
     """Test _load_mlx_model with loading error."""
     manager = ModelManager(tmp_path)
-    mock_load.side_effect = ValueError("Invalid model format")
 
-    with pytest.raises(RuntimeError, match="Failed to load MLX model"):
-        manager._load_mlx_model("test/model")
+    # Mock mlx.core and mlx_lm to work around CI import issues
+    mock_mx = MagicMock()
+    mock_mlx_lm = MagicMock()
+    mock_mlx_lm.load.side_effect = ValueError("Invalid model format")
+
+    with patch.dict('sys.modules', {'mlx.core': mock_mx, 'mlx_lm': mock_mlx_lm}):
+        with pytest.raises(RuntimeError, match="Failed to load MLX model"):
+            manager._load_mlx_model("test/model")
 
 
 def test_load_mlx_vlm_import_error(tmp_path):
@@ -211,14 +215,18 @@ def test_load_mlx_vlm_import_error(tmp_path):
             manager._load_mlx_vlm("test/model")
 
 
-@patch("mlx_vlm.load")
-def test_load_mlx_vlm_loading_error(mock_load, tmp_path):
+def test_load_mlx_vlm_loading_error(tmp_path):
     """Test _load_mlx_vlm with loading error."""
     manager = ModelManager(tmp_path)
-    mock_load.side_effect = OSError("Failed to load model files")
 
-    with pytest.raises(RuntimeError, match="Failed to load MLX VLM"):
-        manager._load_mlx_vlm("test/model")
+    # Mock mlx.core and mlx_vlm to work around CI import issues
+    mock_mx = MagicMock()
+    mock_mlx_vlm = MagicMock()
+    mock_mlx_vlm.load.side_effect = OSError("Failed to load model files")
+
+    with patch.dict('sys.modules', {'mlx.core': mock_mx, 'mlx_vlm': mock_mlx_vlm}):
+        with pytest.raises(RuntimeError, match="Failed to load MLX VLM"):
+            manager._load_mlx_vlm("test/model")
 
 
 def test_save_model_metadata_error_handling(tmp_path):
