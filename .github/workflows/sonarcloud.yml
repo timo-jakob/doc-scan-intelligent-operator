@@ -46,9 +46,18 @@ jobs:
           # Wait for SonarCloud to finish processing
           sleep 10
 
+          # Build API URL - include PR number if this is a pull request
+          API_URL="https://sonarcloud.io/api/qualitygates/project_status?projectKey=timo-jakob_doc-scan-intelligent-operator"
+          if [ "${{ github.event_name }}" == "pull_request" ]; then
+            PR_NUMBER="${{ github.event.pull_request.number }}"
+            API_URL="${API_URL}&pullRequest=${PR_NUMBER}"
+            echo "Checking quality gate for PR #${PR_NUMBER}"
+          else
+            echo "Checking quality gate for branch"
+          fi
+
           # Get the quality gate status
-          QUALITY_GATE=$(curl -s -u "${{ secrets.SONAR_TOKEN }}:" \
-            "https://sonarcloud.io/api/qualitygates/project_status?projectKey=timo-jakob_doc-scan-intelligent-operator" \
+          QUALITY_GATE=$(curl -s -u "${{ secrets.SONAR_TOKEN }}:" "${API_URL}" \
             | jq -r '.projectStatus.status')
 
           echo "Quality Gate Status: $QUALITY_GATE"
