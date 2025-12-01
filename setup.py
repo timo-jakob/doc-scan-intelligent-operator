@@ -27,7 +27,7 @@ setup(
     ],
     extras_require={
         "dev": [
-            "pytest==8.3.4",
+            "pytest==8.3.5",
             "pytest-cov==6.0.0",
             "black==24.10.0",
             "ruff==0.8.4",
