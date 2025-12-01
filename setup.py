@@ -30,7 +30,7 @@ setup(
             "pytest==8.3.4",
             "pytest-cov==6.0.0",
             "black==24.10.0",
-            "ruff==0.8.4",
+            "ruff==0.8.6",
             "mypy==1.13.0",
         ],
         "ocr": [
