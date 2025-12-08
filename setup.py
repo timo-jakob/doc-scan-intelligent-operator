@@ -23,7 +23,7 @@ setup(
         "huggingface-hub==0.26.5",
         "PyYAML==6.0.3",
         "PyMuPDF==1.24.14",
-        "Pillow==11.0.0",
+        "Pillow==11.3.0",
     ],
     extras_require={
         "dev": [
