@@ -31,7 +31,7 @@ setup(
             "pytest-cov==6.0.0",
             "black==24.10.0",
             "ruff==0.8.6",
-            "mypy==1.13.0",
+            "mypy==1.19.0",
         ],
         "ocr": [
             "pytesseract==0.3.13",
