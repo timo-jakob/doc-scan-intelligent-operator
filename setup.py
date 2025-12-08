@@ -20,7 +20,7 @@ setup(
         "mlx==0.21.0",
         "mlx-lm==0.20.3",
         "mlx-vlm==0.1.1",
-        "huggingface-hub==0.26.5",
+        "huggingface-hub==0.36.0",
         "PyYAML==6.0.3",
         "PyMuPDF==1.24.14",
         "Pillow==11.0.0",
