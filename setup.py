@@ -17,9 +17,9 @@ setup(
     python_requires=">=3.9",
     packages=find_packages(exclude=["tests", "tests.*"]),
     install_requires=[
-        "mlx==0.21.0",
-        "mlx-lm==0.20.3",
-        "mlx-vlm==0.1.1",
+        "mlx==0.21.1",
+        "mlx-lm==0.20.6",
+        "mlx-vlm==0.1.27",
         "huggingface-hub==0.36.0",
         "PyYAML==6.0.3",
         "PyMuPDF==1.24.14",
