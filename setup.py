@@ -22,7 +22,7 @@ setup(
         "mlx-vlm==0.1.1",
         "huggingface-hub==0.36.0",
         "PyYAML==6.0.3",
-        "PyMuPDF==1.24.14",
+        "PyMuPDF==1.26.7",
         "Pillow==11.0.0",
     ],
     extras_require={
